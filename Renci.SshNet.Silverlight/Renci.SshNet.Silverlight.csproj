@@ -17,6 +17,10 @@
     <SilverlightApplication>false</SilverlightApplication>
     <ValidateXaml>true</ValidateXaml>
     <ThrowErrorsInValidation>true</ThrowErrorsInValidation>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
   </PropertyGroup>
   <!-- This property group is only here to support building this project using the 
        MSBuild 3.5 toolset. In order to work correctly with this older toolset, it needs 
@@ -34,6 +38,7 @@
     <NoConfig>true</NoConfig>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>Bin\Debug\Renci.SshNet.Silverlight.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -44,6 +49,7 @@
     <NoConfig>true</NoConfig>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>Bin\Release\Renci.SshNet.Silverlight.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp, Version=2.0.5.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
@@ -209,6 +215,9 @@
     <Compile Include="..\Renci.SshNet\ExpectAction.cs">
       <Link>ExpectAction.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\ExpectAsyncResult.cs">
+      <Link>ExpectAsyncResult.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\ForwardedPort.cs">
       <Link>ForwardedPort.cs</Link>
     </Compile>
@@ -220,6 +229,9 @@
     </Compile>
     <Compile Include="..\Renci.SshNet\ForwardedPortRemote.cs">
       <Link>ForwardedPortRemote.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\HashInfo.cs">
+      <Link>HashInfo.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\KeyboardInteractiveAuthenticationMethod.cs">
       <Link>KeyboardInteractiveAuthenticationMethod.cs</Link>
@@ -422,6 +434,12 @@
     <Compile Include="..\Renci.SshNet\Messages\Transport\KeyExchangeDhReplyMessage.cs">
       <Link>Messages\Transport\KeyExchangeDhReplyMessage.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Transport\KeyExchangeEcdhInitMessage.cs">
+      <Link>Messages\Transport\KeyExchangeEcdhInitMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Transport\KeyExchangeEcdhReplyMessage.cs">
+      <Link>Messages\Transport\KeyExchangeEcdhReplyMessage.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Messages\Transport\KeyExchangeInitMessage.cs">
       <Link>Messages\Transport\KeyExchangeInitMessage.cs</Link>
     </Compile>
@@ -515,6 +533,9 @@
     <Compile Include="..\Renci.SshNet\Security\Cryptography\Ciphers\Paddings\PKCS7Padding.cs">
       <Link>Security\Cryptography\Ciphers\Paddings\PKCS7Padding.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Ciphers\Paddings\PKCS5Padding.cs">
+      <Link>Security\Cryptography\Ciphers\Paddings\PKCS5Padding.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Security\Cryptography\Ciphers\RsaCipher.cs">
       <Link>Security\Cryptography\Ciphers\RsaCipher.cs</Link>
     </Compile>
@@ -539,11 +560,23 @@
     <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\MD5Hash.cs">
       <Link>Security\Cryptography\Hashes\MD5Hash.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\RIPEMD160Hash.cs">
+      <Link>Security\Cryptography\Hashes\RIPEMD160Hash.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA1Hash.cs">
       <Link>Security\Cryptography\Hashes\SHA1Hash.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA256Hash.cs">
       <Link>Security\Cryptography\Hashes\SHA256Hash.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA2HashBase.cs">
+      <Link>Security\Cryptography\Hashes\SHA2HashBase.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA384Hash.cs">
+      <Link>Security\Cryptography\Hashes\SHA384Hash.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA512Hash.cs">
+      <Link>Security\Cryptography\Hashes\SHA512Hash.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Security\Cryptography\HMac.cs">
       <Link>Security\Cryptography\HMac.cs</Link>
@@ -584,6 +617,12 @@
     <Compile Include="..\Renci.SshNet\Security\KeyExchangeDiffieHellmanGroupExchangeSha256.cs">
       <Link>Security\KeyExchangeDiffieHellmanGroupExchangeSha256.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Security\KeyExchangeDiffieHellmanGroupSha1.cs">
+      <Link>Security\KeyExchangeDiffieHellmanGroupSha1.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Security\KeyExchangeEllipticCurveDiffieHellman.cs">
+      <Link>Security\KeyExchangeEllipticCurveDiffieHellman.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Security\KeyHostAlgorithm.cs">
       <Link>Security\KeyHostAlgorithm.cs</Link>
     </Compile>
@@ -596,8 +635,26 @@
     <Compile Include="..\Renci.SshNet\Sftp\Flags.cs">
       <Link>Sftp\Flags.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\ExtendedRequests\FStatVfsRequest.cs">
+      <Link>Sftp\Requests\ExtendedRequests\FStatVfsRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\ExtendedRequests\HardLinkRequest.cs">
+      <Link>Sftp\Requests\ExtendedRequests\HardLinkRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\ExtendedRequests\PosixRenameRequest.cs">
+      <Link>Sftp\Requests\ExtendedRequests\PosixRenameRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\ExtendedRequests\StatVfsRequest.cs">
+      <Link>Sftp\Requests\ExtendedRequests\StatVfsRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpBlockRequest.cs">
+      <Link>Sftp\Requests\SftpBlockRequest.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpCloseRequest.cs">
       <Link>Sftp\Requests\SftpCloseRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpExtendedRequest.cs">
+      <Link>Sftp\Requests\SftpExtendedRequest.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpFSetStatRequest.cs">
       <Link>Sftp\Requests\SftpFSetStatRequest.cs</Link>
@@ -607,6 +664,9 @@
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpInitRequest.cs">
       <Link>Sftp\Requests\SftpInitRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpLinkRequest.cs">
+      <Link>Sftp\Requests\SftpLinkRequest.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpLStatRequest.cs">
       <Link>Sftp\Requests\SftpLStatRequest.cs</Link>
@@ -653,8 +713,17 @@
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpSymLinkRequest.cs">
       <Link>Sftp\Requests\SftpSymLinkRequest.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpUnblockRequest.cs">
+      <Link>Sftp\Requests\SftpUnblockRequest.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpWriteRequest.cs">
       <Link>Sftp\Requests\SftpWriteRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Responses\ExtendedReplies\ExtendedReplyInfo.cs">
+      <Link>Sftp\Responses\ExtendedReplies\ExtendedReplyInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Responses\ExtendedReplies\StatVfsReplyInfo.cs">
+      <Link>Sftp\Responses\ExtendedReplies\StatVfsReplyInfo.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Responses\SftpAttrsResponse.cs">
       <Link>Sftp\Responses\SftpAttrsResponse.cs</Link>
@@ -695,6 +764,9 @@
     <Compile Include="..\Renci.SshNet\Sftp\SftpFileStream.cs">
       <Link>Sftp\SftpFileStream.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpFileSystemInformation.cs">
+      <Link>Sftp\SftpFileSystemInformation.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpListDirectoryAsyncResult.cs">
       <Link>Sftp\SftpListDirectoryAsyncResult.cs</Link>
     </Compile>
@@ -706,6 +778,9 @@
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpSession.cs">
       <Link>Sftp\SftpSession.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpSynchronizeDirectoriesAsyncResult.cs">
+      <Link>Sftp\SftpSynchronizeDirectoriesAsyncResult.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpUploadAsyncResult.cs">
       <Link>Sftp\SftpUploadAsyncResult.cs</Link>
@@ -729,6 +804,8 @@
       <Link>SubsystemSession.cs</Link>
     </Compile>
     <Compile Include="Common\Extensions.SilverlightShared.cs" />
+    <Compile Include="Shell.SilverlightShared.cs" />
+    <Compile Include="ShellStream.SilverlightShared.cs" />
     <Compile Include="ForwardedPortLocal.SilverlightShared.cs" />
     <Compile Include="ForwardedPortRemote.SilverlightShared.cs" />
     <Compile Include="KeyboardInteractiveAuthenticationMethod.SilverlightShared.cs" />
@@ -746,7 +823,7 @@
       <FlavorProperties GUID="{A1591282-1198-4647-A2B1-27E5FF5F6F3B}">
         <SilverlightProjectProperties />
       </FlavorProperties>
-      <UserProperties ProjectLinkReference="2f5f8c90-0bd1-424f-997c-7bc6280919d1" ProjectLinkerExcludeFilter="\\?desktop(\\.*)?$;\\?silverlight(\\.*)?$;\.desktop;\.silverlight;\.xaml;^service references(\\.*)?$;\.clientconfig;^web references(\\.*)?$" />
+      <UserProperties ProjectLinkerExcludeFilter="\\?desktop(\\.*)?$;\\?silverlight(\\.*)?$;\.desktop;\.silverlight;\.xaml;^service references(\\.*)?$;\.clientconfig;^web references(\\.*)?$" ProjectLinkReference="2f5f8c90-0bd1-424f-997c-7bc6280919d1" />
     </VisualStudio>
   </ProjectExtensions>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

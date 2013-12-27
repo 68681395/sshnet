@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Collections.ObjectModel;
 using Renci.SshNet.Messages.Authentication;
 using Renci.SshNet.Messages;
@@ -43,7 +42,9 @@ namespace Renci.SshNet
         public PrivateKeyAuthenticationMethod(string username, params PrivateKeyFile[] keyFiles)
             : base(username)
         {
-            //  TODO:   Should throw on keyFiles == null here?
+            if (keyFiles == null)
+                throw new ArgumentNullException("keyFiles");
+
             this.KeyFiles = new Collection<PrivateKeyFile>(keyFiles);
         }
 
@@ -51,12 +52,11 @@ namespace Renci.SshNet
         /// Authenticates the specified session.
         /// </summary>
         /// <param name="session">The session to authenticate.</param>
-        /// <returns></returns>
+        /// <returns>
+        /// Result of authentication  process.
+        /// </returns>
         public override AuthenticationResult Authenticate(Session session)
         {
-            if (this.KeyFiles == null)
-                return AuthenticationResult.Failure;
-
             session.UserAuthenticationSuccessReceived += Session_UserAuthenticationSuccessReceived;
             session.UserAuthenticationFailureReceived += Session_UserAuthenticationFailureReceived;
             session.MessageReceived += Session_MessageReceived;

@@ -4,16 +4,17 @@ using System.Linq;
 using Renci.SshNet.Common;
 using System.Globalization;
 using Renci.SshNet.Sftp.Responses;
+using System.Text;
 
 namespace Renci.SshNet.Sftp
 {
     internal abstract class SftpMessage : SshData
     {
-        public new static SftpMessage Load(byte[] data)
+        public static SftpMessage Load(uint protocolVersion, byte[] data, Encoding encoding)
         {
             var messageType = (SftpMessageTypes)data.FirstOrDefault();
 
-            return Load(data, messageType);
+            return Load(protocolVersion, data, messageType, encoding);
         }
 
         protected override int ZeroReaderIndex
@@ -94,50 +95,50 @@ namespace Renci.SshNet.Sftp
             {
                 UInt32 flag = 0;
 
-                if (attributes.Size > -1)
+                if (attributes.IsSizeChanged && attributes.IsRegularFile)
                 {
                     flag |= 0x00000001;
                 }
 
-                if (attributes.UserId > -1 && attributes.GroupId > -1)
+                if (attributes.IsUserIdChanged|| attributes.IsGroupIdChanged)
                 {
                     flag |= 0x00000002;
                 }
 
-                if (attributes.Permissions > 0)
+                if (attributes.IsPermissionsChanged)
                 {
                     flag |= 0x00000004;
                 }
 
-                if (attributes.LastAccessTime > DateTime.MinValue && attributes.LastWriteTime > DateTime.MinValue)
+                if (attributes.IsLastAccessTimeChanged || attributes.IsLastWriteTimeChanged)
                 {
                     flag |= 0x00000008;
                 }
 
-                if (attributes.Extensions != null)
+                if (attributes.IsExtensionsChanged)
                 {
                     flag |= 0x80000000;
                 }
 
                 this.Write(flag);
 
-                if (attributes.Size > -1)
+                if (attributes.IsSizeChanged && attributes.IsRegularFile)
                 {
                     this.Write((UInt64)attributes.Size);
                 }
 
-                if (attributes.UserId > -1 && attributes.GroupId > -1)
+                if (attributes.IsUserIdChanged|| attributes.IsGroupIdChanged)
                 {
                     this.Write((UInt32)attributes.UserId);
                     this.Write((UInt32)attributes.GroupId);
                 }
 
-                if (attributes.Permissions > 0)
+                if (attributes.IsPermissionsChanged)
                 {
                     this.Write(attributes.Permissions);
                 }
 
-                if (attributes.LastAccessTime > DateTime.MinValue && attributes.LastWriteTime > DateTime.MinValue)
+                if (attributes.IsLastAccessTimeChanged || attributes.IsLastWriteTimeChanged)
                 {
                     uint time = (uint)(attributes.LastAccessTime.ToFileTime() / 10000000 - 11644473600);
                     this.Write(time);
@@ -145,14 +146,14 @@ namespace Renci.SshNet.Sftp
                     this.Write(time);
                 }
 
-                if (attributes.Extensions != null)
+                if (attributes.IsExtensionsChanged)
                 {
                     this.Write(attributes.Extensions);
                 }
             }
         }
 
-        private static SftpMessage Load(byte[] data, SftpMessageTypes messageType)
+        private static SftpMessage Load(uint protocolVersion, byte[] data, SftpMessageTypes messageType, Encoding encoding)
         {
             SftpMessage message = null;
 
@@ -162,22 +163,22 @@ namespace Renci.SshNet.Sftp
                     message = new SftpVersionResponse();
                     break;
                 case SftpMessageTypes.Status:
-                    message = new SftpStatusResponse();
+                    message = new SftpStatusResponse(protocolVersion);
                     break;
                 case SftpMessageTypes.Data:
-                    message = new SftpDataResponse();
+                    message = new SftpDataResponse(protocolVersion);
                     break;
                 case SftpMessageTypes.Handle:
-                    message = new SftpHandleResponse();
+                    message = new SftpHandleResponse(protocolVersion);
                     break;
                 case SftpMessageTypes.Name:
-                    message = new SftpNameResponse();
+                    message = new SftpNameResponse(protocolVersion, encoding);
                     break;
                 case SftpMessageTypes.Attrs:
-                    message = new SftpAttrsResponse();
+                    message = new SftpAttrsResponse(protocolVersion);
                     break;
                 case SftpMessageTypes.ExtendedReply:
-                    message = new SftpExtendedReplyResponse();
+                    message = new SftpExtendedReplyResponse(protocolVersion);
                     break;
                 default:
                     throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, "Message type '{0}' is not supported.", messageType));

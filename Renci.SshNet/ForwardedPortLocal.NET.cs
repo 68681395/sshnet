@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Sockets;
 using System.Net;
 using System.Threading;
@@ -12,6 +13,7 @@ namespace Renci.SshNet
     public partial class ForwardedPortLocal
     {
         private TcpListener _listener;
+        private readonly object _listenerLocker = new object();
 
         partial void InternalStart()
         {
@@ -19,10 +21,16 @@ namespace Renci.SshNet
             if (this.IsStarted)
                 return;
 
-            var ep = new IPEndPoint(Dns.GetHostAddresses(this.BoundHost)[0], (int)this.BoundPort);
+            IPAddress addr = this.BoundHost.GetIPAddress();
+            var ep = new IPEndPoint(addr, (int)this.BoundPort);
 
             this._listener = new TcpListener(ep);
             this._listener.Start();
+            //  Update bound port if original was passed as zero
+            this.BoundPort = (uint)((IPEndPoint)_listener.LocalEndpoint).Port;
+
+            this.Session.ErrorOccured += Session_ErrorOccured;
+            this.Session.Disconnected += Session_Disconnected;
 
             this._listenerTaskCompleted = new ManualResetEvent(false);
             this.ExecuteThread(() =>
@@ -31,6 +39,12 @@ namespace Renci.SshNet
                 {
                     while (true)
                     {
+                        lock (this._listenerLocker)
+                        {
+                            if (this._listener == null)
+                                break;
+                        }
+
                         var socket = this._listener.AcceptSocket();
 
                         this.ExecuteThread(() =>
@@ -41,11 +55,14 @@ namespace Renci.SshNet
 
                                 this.RaiseRequestReceived(originatorEndPoint.Address.ToString(), (uint)originatorEndPoint.Port);
 
-                                var channel = this.Session.CreateChannel<ChannelDirectTcpip>();
+                                using (var channel = this.Session.CreateChannel<ChannelDirectTcpip>())
+                                {
+                                    channel.Open(this.Host, this.Port, socket);
 
-                                channel.Open(this.Host, this.Port, socket);
+                                    channel.Bind();
 
-                                channel.Bind();
+                                    channel.Close();
+                                }
                             }
                             catch (Exception exp)
                             {
@@ -80,12 +97,38 @@ namespace Renci.SshNet
             if (!this.IsStarted)
                 return;
 
-            this._listener.Stop();
+            this.Session.Disconnected -= Session_Disconnected;
+            this.Session.ErrorOccured -= Session_ErrorOccured;
+
+            this.StopListener();
+
             this._listenerTaskCompleted.WaitOne(this.Session.ConnectionInfo.Timeout);
             this._listenerTaskCompleted.Dispose();
             this._listenerTaskCompleted = null;
 
             this.IsStarted = false;
+        }
+
+        private void StopListener()
+        {
+            lock (this._listenerLocker)
+            {
+                if (this._listener != null)
+                {
+                    this._listener.Stop();
+                    this._listener = null;
+                }
+            }
+        }
+
+        private void Session_ErrorOccured(object sender, Common.ExceptionEventArgs e)
+        {
+            this.StopListener();
+        }
+
+        private void Session_Disconnected(object sender, EventArgs e)
+        {
+            this.StopListener();
         }
     }
 }

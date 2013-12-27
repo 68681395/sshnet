@@ -71,63 +71,54 @@ namespace Renci.SshNet.Channels
                 return;
 
             //  Start reading data from the port and send to channel
-            var readerTaskCompleted = new ManualResetEvent(false);
             Exception exception = null;
 
-            this.ExecuteThread(() =>
+            try
             {
-                try
+                var buffer = new byte[this.PacketSize - 9];
+
+                while (this._socket != null && this._socket.CanRead())
                 {
-                    var buffer = new byte[this.PacketSize - 9];
-
-                    while (this._socket.Connected || this.IsConnected)
+                    try
                     {
-                        try
+                        var read = 0;
+                        this.InternalSocketReceive(buffer, ref read);
+                        if (read > 0)
                         {
-
-                            var read = 0;
-                            this.InternalSocketReceive(buffer, ref read);
-                            if (read > 0)
-                            {
-                                this.SendMessage(new ChannelDataMessage(this.RemoteChannelNumber, buffer.Take(read).ToArray()));
-                            }
-                            else
-                            {
-                                break;
-                            }
+                            this.SendMessage(new ChannelDataMessage(this.RemoteChannelNumber, buffer.Take(read).ToArray()));
                         }
-                        catch (SocketException exp)
+                        else
                         {
-                            if (exp.SocketErrorCode == SocketError.WouldBlock ||
-                                exp.SocketErrorCode == SocketError.IOPending ||
-                                exp.SocketErrorCode == SocketError.NoBufferSpaceAvailable)
-                            {
-                                // socket buffer is probably empty, wait and try again
-                                Thread.Sleep(30);
-                            }
-                            else if (exp.SocketErrorCode == SocketError.ConnectionAborted || exp.SocketErrorCode == SocketError.ConnectionReset)
-                            {
-                                break;
-                            }
-                            else
-                                throw;  // throw any other error
+                            break;
                         }
                     }
+                    catch (SocketException exp)
+                    {
+                        if (exp.SocketErrorCode == SocketError.WouldBlock ||
+                            exp.SocketErrorCode == SocketError.IOPending ||
+                            exp.SocketErrorCode == SocketError.NoBufferSpaceAvailable)
+                        {
+                            // socket buffer is probably empty, wait and try again
+                            Thread.Sleep(30);
+                        }
+                        else if (exp.SocketErrorCode == SocketError.ConnectionAborted || exp.SocketErrorCode == SocketError.ConnectionReset)
+                        {
+                            break;
+                        }
+                        else
+                            throw;  // throw any other error
+                    }
                 }
-                catch (Exception exp)
-                {
-                    exception = exp;
-                }
-                finally
-                {
-                    readerTaskCompleted.Set();
-                }
-            });
+            }
+            catch (Exception exp)
+            {
+                exception = exp;
+            }
 
             //  Channel was open and we MUST receive EOF notification, 
             //  data transfer can take longer then connection specified timeout
             //  If listener thread is finished then socket was closed
-            System.Threading.WaitHandle.WaitAny(new WaitHandle[] { this._channelEof, readerTaskCompleted });
+            System.Threading.WaitHandle.WaitAny(new WaitHandle[] { this._channelEof });
 
             //  Close socket if still open
             if (this._socket != null)
@@ -189,18 +180,41 @@ namespace Renci.SshNet.Channels
         /// <summary>
         /// Called when channel has no more data to receive.
         /// </summary>
-        protected override void OnEof()
-        {
-            base.OnEof();
+        protected override void OnEof() {
+	        base.OnEof();
 
-            this._channelEof.Set();
+            EventWaitHandle channelEof = this._channelEof;
+            if (channelEof != null)
+                channelEof.Set();
         }
 
         protected override void OnClose()
         {
             base.OnClose();
 
-            this._channelEof.Set();
+            EventWaitHandle channelEof = this._channelEof;
+            if (channelEof != null)
+                channelEof.Set();
+        }
+
+        protected override void OnErrorOccured(Exception exp)
+        {
+            base.OnErrorOccured(exp);
+
+            //  If error occured, no more data can be received
+            EventWaitHandle channelEof = this._channelEof;
+            if (channelEof != null)
+                channelEof.Set();
+        }
+
+        protected override void OnDisconnected()
+        {
+            base.OnDisconnected();
+
+            //  If disconnected, no more data can be received
+            EventWaitHandle channelEof = this._channelEof;
+            if (channelEof != null)
+                channelEof.Set();
         }
 
         partial void ExecuteThread(Action action);

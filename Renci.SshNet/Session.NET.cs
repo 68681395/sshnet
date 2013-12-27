@@ -22,9 +22,17 @@ namespace Renci.SshNet
             new TraceSource("SshNet.Logging");
 #endif
 
+        partial void IsSocketConnected(ref bool isConnected)
+        {
+                isConnected = (!this._isDisconnecting && this._socket != null && this._socket.Connected && this._isAuthenticated && this._messageListenerCompleted != null)
+                    && this._socket.Poll(-1, SelectMode.SelectWrite);
+        }
+
         partial void SocketConnect(string host, int port)
         {
-            var ep = new IPEndPoint(Dns.GetHostAddresses(host)[0], port);
+            IPAddress addr = host.GetIPAddress();
+
+            var ep = new IPEndPoint(addr, port);
             this._socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
             var socketBufferSize = 2 * MAXIMUM_PACKET_SIZE;
@@ -38,7 +46,10 @@ namespace Renci.SshNet
             //  Connect socket with specified timeout
             var connectResult = this._socket.BeginConnect(ep, null, null);
 
-            connectResult.AsyncWaitHandle.WaitOne(this.ConnectionInfo.Timeout, false);
+            if (!connectResult.AsyncWaitHandle.WaitOne(this.ConnectionInfo.Timeout, false))
+            {
+                throw new SshOperationTimeoutException("Connection Could Not Be Established");
+            }
 
             this._socket.EndConnect(connectResult);
         }
@@ -59,7 +70,12 @@ namespace Renci.SshNet
             var data = new byte[1];
             do
             {
-                var received = this._socket.Receive(data);
+                var asyncResult = this._socket.BeginReceive(data, 0, data.Length, SocketFlags.None, null, null);
+
+                if (!asyncResult.AsyncWaitHandle.WaitOne(this.ConnectionInfo.Timeout))
+                    throw new SshOperationTimeoutException("Socket read operation has timed out");
+
+                var received = this._socket.EndReceive(asyncResult);
 
                 //  If zero bytes received then exit
                 if (received == 0)
@@ -67,10 +83,10 @@ namespace Renci.SshNet
 
                 buffer.Add(data[0]);
             }
-            while (!(buffer.Count > 1 && (buffer[buffer.Count - 1] == 0x0A || buffer[buffer.Count - 1] == 0x00)));
+            while (!(buffer.Count > 0 && (buffer[buffer.Count - 1] == 0x0A || buffer[buffer.Count - 1] == 0x00)));
 
             // Return an empty version string if the buffer consists of a 0x00 character.
-            if (buffer[buffer.Count - 1] == 0x00)
+            if (buffer.Count > 0 && buffer[buffer.Count - 1] == 0x00)
             {
                 response = string.Empty;
             }
@@ -114,7 +130,7 @@ namespace Renci.SshNet
                         //
                         // Adding a check for this._isDisconnecting causes ReceiveMessage() to throw SshConnectionException: "Bad packet length {0}".
                         //
-						throw new SshConnectionException("An established connection was aborted by the software in your host machine.", DisconnectReason.ConnectionLost);
+                        throw new SshConnectionException("An established connection was aborted by the software in your host machine.", DisconnectReason.ConnectionLost);
                     }
                 }
                 catch (SocketException exp)

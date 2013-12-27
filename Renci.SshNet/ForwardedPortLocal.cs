@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Net;
 
 namespace Renci.SshNet
 {
@@ -9,12 +10,12 @@ namespace Renci.SshNet
     public partial class ForwardedPortLocal : ForwardedPort, IDisposable
     {
         private EventWaitHandle _listenerTaskCompleted;
-
+		
         /// <summary>
         /// Gets the bound host.
         /// </summary>
         public string BoundHost { get; protected set; }
-
+		
         /// <summary>
         /// Gets the bound port.
         /// </summary>
@@ -36,10 +37,23 @@ namespace Renci.SshNet
         /// <param name="boundPort">The bound port.</param>
         /// <param name="host">The host.</param>
         /// <param name="port">The port.</param>
+        /// <example>
+        ///     <code source="..\..\Renci.SshNet.Tests\Classes\ForwardedPortLocalTest.cs" region="Example SshClient AddForwardedPort Start Stop ForwardedPortLocal" language="C#" title="Local port forwarding" />
+        /// </example>
         public ForwardedPortLocal(uint boundPort, string host, uint port)
             : this(string.Empty, boundPort, host, port)
         {
         }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ForwardedPortLocal"/> class.
+        /// </summary>
+        /// <param name="host">The host.</param>
+        /// <param name="port">The port.</param>
+		public ForwardedPortLocal(string boundHost, string host, uint port)
+			: this(boundHost, 0, host, port) 
+		{
+		}
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ForwardedPortLocal"/> class.
@@ -122,6 +136,8 @@ namespace Renci.SshNet
             // Check to see if Dispose has already been called.
             if (!this._isDisposed)
             {
+                this.InternalStop();
+
                 // If disposing equals true, dispose all managed
                 // and unmanaged ResourceMessages.
                 if (disposing)

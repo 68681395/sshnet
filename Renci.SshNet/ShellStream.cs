@@ -13,7 +13,7 @@ namespace Renci.SshNet
     /// <summary>
     /// Contains operation for working with SSH Shell.
     /// </summary>
-    public class ShellStream : Stream
+    public partial class ShellStream : Stream
     {
         private readonly Session _session;
 
@@ -26,6 +26,8 @@ namespace Renci.SshNet
         private Queue<byte> _incoming;
 
         private Queue<byte> _outgoing;
+
+        private AutoResetEvent _dataReceived = new AutoResetEvent(false);
 
         /// <summary>
         /// Occurs when data was received.
@@ -47,13 +49,16 @@ namespace Renci.SshNet
         {
             get
             {
-                return this._incoming.Count > 0;
+                lock (this._incoming)
+                {
+                    return this._incoming.Count > 0;
+                }
             }
         }
 
-        internal ShellStream(Session session, string terminalName, uint columns, uint rows, uint width, uint height, int maxLines, params KeyValuePair<TerminalModes, uint>[] terminalModeValues)
+        internal ShellStream(Session session, string terminalName, uint columns, uint rows, uint width, uint height, int maxLines, IDictionary<TerminalModes, uint> terminalModeValues)
         {
-            this._encoding = new Renci.SshNet.Common.ASCIIEncoding();
+            this._encoding = session.ConnectionInfo.Encoding;
             this._session = session;
             this._incoming = new Queue<byte>();
             this._outgoing = new Queue<byte>();
@@ -104,6 +109,10 @@ namespace Renci.SshNet
         /// <exception cref="T:System.IO.IOException">An I/O error occurs. </exception>
         public override void Flush()
         {
+            if (this._channel == null)
+            {
+                throw new ObjectDisposedException("ShellStream");
+            }
             this._channel.SendData(this._outgoing.ToArray());
             this._outgoing.Clear();
         }
@@ -118,7 +127,13 @@ namespace Renci.SshNet
         /// <exception cref="T:System.ObjectDisposedException">Methods were called after the stream was closed. </exception>
         public override long Length
         {
-            get { return this._incoming.Count; }
+            get
+            {
+                lock (this._incoming)
+                {
+                    return this._incoming.Count;
+                }
+            }
         }
 
         /// <summary>
@@ -163,9 +178,12 @@ namespace Renci.SshNet
         {
             var i = 0;
 
-            for (; i < count && this._incoming.Count > 0; i++)
+            lock (this._incoming)
             {
-                buffer[offset + i] = this._incoming.Dequeue();
+                for (; i < count && this._incoming.Count > 0; i++)
+                {
+                    buffer[offset + i] = this._incoming.Dequeue();
+                }
             }
 
             return i;
@@ -238,7 +256,7 @@ namespace Renci.SshNet
 
         #endregion
 
-                /// <summary>
+        /// <summary>
         /// Expects the specified expression and performs action when one is found.
         /// </summary>
         /// <param name="expectActions">The expected expressions and actions to perform.</param>
@@ -257,12 +275,14 @@ namespace Renci.SshNet
             var expectedFound = false;
             var text = string.Empty;
 
-            lock (this._incoming)
+            do
             {
-                do
+                lock (this._incoming)
                 {
                     if (this._incoming.Count > 0)
+                    {
                         text = this._encoding.GetString(this._incoming.ToArray(), 0, this._incoming.Count);
+                    }
 
                     if (text.Length > 0)
                     {
@@ -274,7 +294,7 @@ namespace Renci.SshNet
                             {
                                 var result = text.Substring(0, match.Index + match.Length);
 
-                                for (int i = 0; i < match.Index + match.Length; i++)
+                                for (int i = 0; i < match.Index + match.Length && this._incoming.Count > 0; i++)
                                 {
                                     //  Remove processed items from the queue
                                     this._incoming.Dequeue();
@@ -285,19 +305,172 @@ namespace Renci.SshNet
                             }
                         }
                     }
+                }
 
-                    if (!expectedFound)
+                if (!expectedFound)
+                {
+                    if (timeout.Ticks > 0)
                     {
-                        if (timeout == TimeSpan.Zero)
+                        if (!this._dataReceived.WaitOne(timeout))
                         {
-                            Monitor.Wait(this._incoming);
-                        }
-                        else if (!Monitor.Wait(this._incoming, timeout))
                             return;
+                        }
+                    }
+                    else
+                    {
+                        this._dataReceived.WaitOne();
                     }
                 }
-                while (!expectedFound);
             }
+            while (!expectedFound);
+        }
+
+        /// <summary>
+        /// Begins the expect.
+        /// </summary>
+        /// <param name="expectActions">The expect actions.</param>
+        /// <returns>
+        /// An <see cref="IAsyncResult" /> that references the asynchronous operation.
+        /// </returns>
+        public IAsyncResult BeginExpect(params ExpectAction[] expectActions)
+        {
+            return this.BeginExpect(TimeSpan.Zero, null, null, expectActions);
+        }
+
+        /// <summary>
+        /// Begins the expect.
+        /// </summary>
+        /// <param name="callback">The callback.</param>
+        /// <param name="expectActions">The expect actions.</param>
+        /// <returns>
+        /// An <see cref="IAsyncResult" /> that references the asynchronous operation.
+        /// </returns>
+        public IAsyncResult BeginExpect(AsyncCallback callback, params ExpectAction[] expectActions)
+        {
+            return this.BeginExpect(TimeSpan.Zero, callback, null, expectActions);
+        }
+
+        /// <summary>
+        /// Begins the expect.
+        /// </summary>
+        /// <param name="callback">The callback.</param>
+        /// <param name="state">The state.</param>
+        /// <param name="expectActions">The expect actions.</param>
+        /// <returns>
+        /// An <see cref="IAsyncResult" /> that references the asynchronous operation.
+        /// </returns>
+        public IAsyncResult BeginExpect(AsyncCallback callback, object state, params ExpectAction[] expectActions)
+        {
+            return this.BeginExpect(TimeSpan.Zero, callback, state, expectActions);
+        }
+
+        /// <summary>
+        /// Begins the expect.
+        /// </summary>
+        /// <param name="timeout">The timeout.</param>
+        /// <param name="callback">The callback.</param>
+        /// <param name="state">The state.</param>
+        /// <param name="expectActions">The expect actions.</param>
+        /// <returns>
+        /// An <see cref="IAsyncResult" /> that references the asynchronous operation.
+        /// </returns>
+        public IAsyncResult BeginExpect(TimeSpan timeout, AsyncCallback callback, object state, params ExpectAction[] expectActions)
+        {
+            var text = string.Empty;
+
+            //  Create new AsyncResult object
+            var asyncResult = new ExpectAsyncResult(callback, state);
+
+            //  Execute callback on different thread                
+            this.ExecuteThread(() =>
+            {
+                string expectActionResult = null;
+                try
+                {
+
+                    do
+                    {
+                        lock (this._incoming)
+                        {
+
+                            if (this._incoming.Count > 0)
+                            {
+                                text = this._encoding.GetString(this._incoming.ToArray(), 0, this._incoming.Count);
+                            }
+
+                            if (text.Length > 0)
+                            {
+                                foreach (var expectAction in expectActions)
+                                {
+                                    var match = expectAction.Expect.Match(text);
+
+                                    if (match.Success)
+                                    {
+                                        var result = text.Substring(0, match.Index + match.Length);
+
+                                        for (int i = 0; i < match.Index + match.Length && this._incoming.Count > 0; i++)
+                                        {
+                                            //  Remove processed items from the queue
+                                            this._incoming.Dequeue();
+                                        }
+
+                                        expectAction.Action(result);
+
+                                        if (callback != null)
+                                        {
+                                            callback(asyncResult);
+                                        }
+                                        expectActionResult = result;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (expectActionResult != null)
+                            break;
+
+                        if (timeout.Ticks > 0)
+                        {
+                            if (!this._dataReceived.WaitOne(timeout))
+                            {
+                                if (callback != null)
+                                {
+                                    callback(asyncResult);
+                                }
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            this._dataReceived.WaitOne();
+                        }
+                    } while (true);
+
+                    asyncResult.SetAsCompleted(expectActionResult, true);
+                }
+                catch (Exception exp)
+                {
+                    asyncResult.SetAsCompleted(exp, true);
+                }
+            });
+
+            return asyncResult;
+        }
+
+        /// <summary>
+        /// Ends the execute.
+        /// </summary>
+        /// <param name="asyncResult">The async result.</param>
+        /// <exception cref="System.ArgumentException">Either the IAsyncResult object did not come from the corresponding async method on this type, or EndExecute was called multiple times with the same IAsyncResult.</exception>
+        public string EndExpect(IAsyncResult asyncResult)
+        {
+            var ar = asyncResult as ExpectAsyncResult;
+
+            if (ar == null || ar.EndInvokeCalled)
+                throw new ArgumentException("Either the IAsyncResult object did not come from the corresponding async method on this type, or EndExecute was called multiple times with the same IAsyncResult.");
+
+            // Wait for operation to complete, then return result or throw exception
+            return ar.EndInvoke();
         }
 
         /// <summary>
@@ -309,7 +482,7 @@ namespace Renci.SshNet
         /// </returns>
         public string Expect(string text)
         {
-            return this.Expect(new Regex(Regex.Escape(text)), TimeSpan.Zero);
+            return this.Expect(new Regex(Regex.Escape(text)), TimeSpan.FromMilliseconds(-1));
         }
 
         /// <summary>
@@ -317,10 +490,12 @@ namespace Renci.SshNet
         /// </summary>
         /// <param name="text">The text to expect.</param>
         /// <param name="timeout">Time to wait for input.</param>
+        /// <returns>
         /// Text available in the shell that ends with expected text, if the specified time elapsed returns null.
+        /// </returns>
         public string Expect(string text, TimeSpan timeout)
         {
-            return this.Expect(new Regex(Regex.Escape(text)));
+            return this.Expect(new Regex(Regex.Escape(text)), timeout);
         }
 
         /// <summary>
@@ -343,34 +518,43 @@ namespace Renci.SshNet
         /// </returns>
         public string Expect(Regex regex, TimeSpan timeout)
         {
+            //  TODO:   Refactor this method, will deda lock
             var text = string.Empty;
 
-            lock (this._incoming)
+            while (true)
             {
-                if (this._incoming.Count > 0)
-                    text = this._encoding.GetString(this._incoming.ToArray(), 0, this._incoming.Count);
-
-                var match = regex.Match(text.ToString());
-                while (!match.Success)
+                lock (this._incoming)
                 {
-                    if (timeout == TimeSpan.Zero)
-                    {
-                        Monitor.Wait(this._incoming);
-                    }
-                    else if (!Monitor.Wait(this._incoming, timeout))
-                        return null;
-
                     if (this._incoming.Count > 0)
+                    {
                         text = this._encoding.GetString(this._incoming.ToArray(), 0, this._incoming.Count);
+                    }
 
-                    match = regex.Match(text.ToString());
+                    var match = regex.Match(text);
+
+                    if (match.Success)
+                    {
+                        //  Remove processed items from the queue
+                        for (int i = 0; i < match.Index + match.Length && this._incoming.Count > 0; i++)
+                        {
+                            this._incoming.Dequeue();
+                        }
+                        break;
+                    }
                 }
 
-                for (int i = 0; i < match.Index + match.Length; i++)
+                if (timeout.Ticks > 0)
                 {
-                    //  Remove processed items from the queue
-                    this._incoming.Dequeue();
+                    if (!this._dataReceived.WaitOne(timeout))
+                    {
+                        return null;
+                    }
                 }
+                else
+                {
+                    this._dataReceived.WaitOne();
+                }
+
             }
 
             return text;
@@ -396,37 +580,45 @@ namespace Renci.SshNet
         {
             var text = string.Empty;
 
-            lock (this._incoming)
+            while (true)
             {
-                if (this._incoming.Count > 0)
-                    text = this._encoding.GetString(this._incoming.ToArray(), 0, this._incoming.Count);
-
-                var index = text.ToString().IndexOf("\r\n");
-                while (index < 0)
+                lock (this._incoming)
                 {
-                    if (timeout == TimeSpan.Zero)
-                    {
-                        Monitor.Wait(this._incoming);
-                    }
-                    else if (!Monitor.Wait(this._incoming, timeout))
-                        return null;
-
                     if (this._incoming.Count > 0)
+                    {
                         text = this._encoding.GetString(this._incoming.ToArray(), 0, this._incoming.Count);
+                    }
 
-                    index = text.ToString().IndexOf("\r\n");
+                    var index = text.IndexOf("\r\n");
+
+                    if (index >= 0)
+                    {
+                        text = text.Substring(0, index);
+
+                        //  Remove processed items from the queue
+                        for (int i = 0; i < index + 2 && this._incoming.Count > 0; i++)
+                        {
+                            this._incoming.Dequeue();
+                        }
+                        break;
+                    }
                 }
 
-                text = text.Substring(0, index);
-
-                for (int i = 0; i < index + 2; i++)
+                if (timeout.Ticks > 0)
                 {
-                    //  Remove processed items from the queue
-                    this._incoming.Dequeue();
+                    if (!this._dataReceived.WaitOne(timeout))
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    this._dataReceived.WaitOne();
                 }
 
             }
-            return text.ToString();
+
+            return text;
         }
 
         /// <summary>
@@ -439,11 +631,10 @@ namespace Renci.SshNet
 
             lock (this._incoming)
             {
-                if (this._incoming.Count > 0)
-                    text = this._encoding.GetString(this._incoming.ToArray(), 0, this._incoming.Count);
-
+                text = this._encoding.GetString(this._incoming.ToArray(), 0, this._incoming.Count);
                 this._incoming.Clear();
             }
+
             return text.ToString();
         }
 
@@ -453,6 +644,11 @@ namespace Renci.SshNet
         /// <param name="text">The text to be written to the shell.</param>
         public void Write(string text)
         {
+            if (this._channel == null)
+            {
+                throw new ObjectDisposedException("ShellStream");
+            }
+
             var data = this._encoding.GetBytes(text);
             this._channel.SendData(data);
         }
@@ -480,7 +676,30 @@ namespace Renci.SshNet
                 this._channel.Dispose();
                 this._channel = null;
             }
+
+            if (this._dataReceived != null)
+            {
+                this._dataReceived.Dispose();
+                this._dataReceived = null;
+            }
+
+            if (this._session != null)
+            {
+                this._session.Disconnected -= new EventHandler<EventArgs>(Session_Disconnected);
+                this._session.ErrorOccured -= new EventHandler<ExceptionEventArgs>(Session_ErrorOccured);
+            }
         }
+
+        /// <summary>
+        /// Waits for the handle to be signaled or for an error to occurs.
+        /// </summary>
+        /// <param name="waitHandle">The wait handle.</param>
+        protected void WaitHandle(WaitHandle waitHandle)
+        {
+            this._session.WaitHandle(waitHandle);
+        }
+
+        partial void ExecuteThread(Action action);
 
         private void Session_ErrorOccured(object sender, ExceptionEventArgs e)
         {
@@ -510,25 +729,31 @@ namespace Renci.SshNet
             {
                 foreach (var b in e.Data)
                 {
-                    _incoming.Enqueue(b);
+                    this._incoming.Enqueue(b);
                 }
-
-                Monitor.Pulse(this._incoming);
             }
+
+            this._dataReceived.Set();
 
             this.OnDataReceived(e.Data);
         }
 
         private void OnRaiseError(ExceptionEventArgs e)
         {
-            if (this.ErrorOccurred != null)
-                this.ErrorOccurred(this, e);
+            var handler = this.ErrorOccurred;
+            if (handler != null)
+            {
+                handler(this, e);
+            }
         }
 
         private void OnDataReceived(byte[] data)
         {
-            if (this.DataReceived != null)
-                this.DataReceived(this, new ShellDataEventArgs(data));
+            var handler = this.DataReceived;
+            if (handler != null)
+            {
+                handler(this, new ShellDataEventArgs(data));
+            }
         }
     }
 }

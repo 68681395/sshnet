@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Security.Cryptography;
 using System.Diagnostics;
+using System.Net;
 
 namespace Renci.SshNet.Common
 {
@@ -65,6 +66,26 @@ namespace Renci.SshNet.Common
                 throw new NullReferenceException();
 
             algorithm.Clear();
+        }
+
+        internal static bool CanRead(this Socket socket)
+        {
+            return socket.Connected;
+        }
+
+        internal static bool CanWrite(this Socket socket)
+        {
+            return socket.Connected;
+        }
+
+        internal static IPAddress GetIPAddress(this string host)
+        {
+            IPAddress ipAddress;
+            if (!IPAddress.TryParse(host, out ipAddress))
+            {
+                throw new ProxyException("Silverlight supports only IP addresses.");
+            }
+            return ipAddress;
         }
     }
 }

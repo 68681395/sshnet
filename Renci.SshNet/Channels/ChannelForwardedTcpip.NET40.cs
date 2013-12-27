@@ -13,12 +13,12 @@ namespace Renci.SshNet.Channels
     /// </summary>
     internal partial class ChannelForwardedTcpip : Channel
     {
-        partial void OpenSocket(string connectedHost, uint connectedPort)
+        partial void OpenSocket(IPAddress connectedHost, uint connectedPort)
         {
-            var ep = new IPEndPoint(Dns.GetHostEntry(connectedHost).AddressList[0], (int)connectedPort);
+            var ep = new IPEndPoint(connectedHost, (int)connectedPort);
             this._socket = new Socket(ep.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             this._socket.Connect(ep);
-            this._socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.NoDelay, 1);
+            this._socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.NoDelay, 1);
         }
 
         partial void InternalSocketReceive(byte[] buffer, ref int read)

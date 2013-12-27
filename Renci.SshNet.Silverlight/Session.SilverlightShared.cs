@@ -1,20 +1,13 @@
 ﻿using System;
 using System.Linq;
 using System.Net;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Ink;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Animation;
-using System.Windows.Shapes;
 using System.Net.Sockets;
 using System.Threading;
 using Renci.SshNet.Common;
 using Renci.SshNet.Messages.Transport;
 using System.Text;
 using Renci.SshNet.Messages;
+using System.Collections.Generic;
 
 namespace Renci.SshNet
 {
@@ -25,6 +18,11 @@ namespace Renci.SshNet
         private AutoResetEvent _receiveEvent = new AutoResetEvent(false);
 
         private bool _isConnected = false;
+
+        partial void IsSocketConnected(ref bool isConnected)
+        {
+            isConnected = (!this._isDisconnecting && this._socket != null && this._socket.Connected && this._isAuthenticated && this._messageListenerCompleted != null && this._isConnected);
+        }
 
         partial void SocketConnect(string host, int port)
         {
@@ -51,40 +49,44 @@ namespace Renci.SshNet
 
         partial void SocketReadLine(ref string response)
         {
-            //  TODO:   Improve this function, currently will not work with server that send multiple lines as a first string
+            var encoding = new Renci.SshNet.Common.ASCIIEncoding();
 
-            var buffer = new byte[1024];
+            var line = new StringBuilder();
+            //  Read data one byte at a time to find end of line and leave any unhandled information in the buffer to be processed later
+            var buffer = new List<byte>();
 
-            StringBuilder result = new StringBuilder();
-
+            var data = new byte[1];
             do
             {
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-                args.SetBuffer(buffer, 0, buffer.Length);
+                args.SetBuffer(data, 0, data.Length);
                 args.UserToken = this._socket;
                 args.RemoteEndPoint = this._socket.RemoteEndPoint;
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(OnReceive);
                 this._socket.ReceiveAsync(args);
 
-                this._receiveEvent.WaitOne(this.ConnectionInfo.Timeout);
+                if (!this._receiveEvent.WaitOne(this.ConnectionInfo.Timeout))
+                    throw new SshOperationTimeoutException("Socket read operation has timed out");
 
-                char lastChar = (char)buffer[0];
-                for (int i = 1; i < args.BytesTransferred; i++)
-                {
-                    char newChar = (char)buffer[i];
-                    if (lastChar == '\r' && newChar == '\n')
-                        break;
-
-                    result.Append(lastChar);
-                    lastChar = newChar;
-                }
-
-                if (args.BytesTransferred < buffer.Length)
+                //  If zero bytes received then exit
+                if (args.BytesTransferred == 0)
                     break;
 
-            } while (true);
+                buffer.Add(data[0]);
+            }
+            while (!(buffer.Count > 0 && (buffer[buffer.Count - 1] == 0x0A || buffer[buffer.Count - 1] == 0x00)));
 
-            response = result.ToString();
+            // Return an empty version string if the buffer consists of a 0x00 character.
+            if (buffer.Count > 0 && buffer[buffer.Count - 1] == 0x00)
+            {
+                response = string.Empty;
+            }
+            else if (buffer.Count == 0) 
+                response = string.Empty;
+            else if (buffer.Count > 1 && buffer[buffer.Count - 2] == 0x0D)
+                response = encoding.GetString(buffer.ToArray(), 0, buffer.Count - 2);
+            else
+                response = encoding.GetString(buffer.ToArray(), 0, buffer.Count - 1);
         }
 
         partial void SocketRead(int length, ref byte[] buffer)
@@ -94,39 +96,39 @@ namespace Renci.SshNet
 
             do
             {
-                    SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-                    args.SetBuffer(buffer, offset + receivedTotal, length - receivedTotal);
-                    args.UserToken = this._socket;
-                    args.RemoteEndPoint = this._socket.RemoteEndPoint;
-                    args.Completed += new EventHandler<SocketAsyncEventArgs>(OnReceive);
-                    this._socket.ReceiveAsync(args);
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+                args.SetBuffer(buffer, offset + receivedTotal, length - receivedTotal);
+                args.UserToken = this._socket;
+                args.RemoteEndPoint = this._socket.RemoteEndPoint;
+                args.Completed += new EventHandler<SocketAsyncEventArgs>(OnReceive);
+                this._socket.ReceiveAsync(args);
 
-                    this._receiveEvent.WaitOne(this.ConnectionInfo.Timeout);
+                this._receiveEvent.WaitOne(this.ConnectionInfo.Timeout);
 
-                    if (args.SocketError == SocketError.WouldBlock ||
-                        args.SocketError == SocketError.IOPending ||
-                        args.SocketError == SocketError.NoBufferSpaceAvailable)
-                    {
-                        // socket buffer is probably empty, wait and try again
-                        Thread.Sleep(30);
-                        continue;
-                    }
-                    else if (args.SocketError != SocketError.Success)
-                    {
-                        throw new SocketException((int)args.SocketError);
-                    }
+                if (args.SocketError == SocketError.WouldBlock ||
+                    args.SocketError == SocketError.IOPending ||
+                    args.SocketError == SocketError.NoBufferSpaceAvailable)
+                {
+                    // socket buffer is probably empty, wait and try again
+                    Thread.Sleep(30);
+                    continue;
+                }
+                else if (args.SocketError != SocketError.Success)
+                {
+                    throw new SocketException((int)args.SocketError);
+                }
 
-                    var receivedBytes = args.BytesTransferred;
+                var receivedBytes = args.BytesTransferred;
 
-                    if (receivedBytes > 0)
-                    {
-                        receivedTotal += receivedBytes;
-                        continue;
-                    }
-                    else
-                    {
-                        throw new SshConnectionException("An established connection was aborted by the software in your host machine.", DisconnectReason.ConnectionLost);
-                    }
+                if (receivedBytes > 0)
+                {
+                    receivedTotal += receivedBytes;
+                    continue;
+                }
+                else
+                {
+                    throw new SshConnectionException("An established connection was aborted by the software in your host machine.", DisconnectReason.ConnectionLost);
+                }
             } while (receivedTotal < length);
         }
 
@@ -174,8 +176,8 @@ namespace Renci.SshNet
             {
                 foreach (var item in from m in this._messagesMetadata where m.Name == messageName select m)
                 {
-                    item.Enabled = true; 
-                    item.Activated = true; 
+                    item.Enabled = true;
+                    item.Activated = true;
                 }
             }
         }

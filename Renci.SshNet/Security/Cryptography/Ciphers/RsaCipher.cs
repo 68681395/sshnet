@@ -12,8 +12,6 @@ namespace Renci.SshNet.Security.Cryptography.Ciphers
     /// </summary>
     public class RsaCipher : AsymmetricCipher
     {
-        private static RNGCryptoServiceProvider _randomizer = new System.Security.Cryptography.RNGCryptoServiceProvider();
-
         private bool _isPrivate;
 
         private RsaKey _key;
@@ -36,7 +34,7 @@ namespace Renci.SshNet.Security.Cryptography.Ciphers
         /// Encrypts the specified data.
         /// </summary>
         /// <param name="data">The data.</param>
-        /// <returns></returns>
+        /// <returns>Encrypted data.</returns>
         public override byte[] Encrypt(byte[] data)
         {
             //  Calculate signature
@@ -59,7 +57,10 @@ namespace Renci.SshNet.Security.Cryptography.Ciphers
         /// Decrypts the specified data.
         /// </summary>
         /// <param name="data">The data.</param>
-        /// <returns></returns>
+        /// <returns>
+        /// Decrypted data.
+        /// </returns>
+        /// <exception cref="System.NotSupportedException">Only block type 01 or 02 are supported.</exception>
         /// <exception cref="NotSupportedException">Thrown when decrypted block type is not supported.</exception>
         public override byte[] Decrypt(byte[] data)
         {

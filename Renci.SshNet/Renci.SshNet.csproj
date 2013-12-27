@@ -20,7 +20,7 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+    <WarningLevel>0</WarningLevel>
     <DocumentationFile>bin\Debug\Renci.SshNet.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -69,6 +69,7 @@
     <Compile Include="Common\ChannelEventArgs.cs" />
     <Compile Include="Common\ChannelOpenFailedEventArgs.cs" />
     <Compile Include="Common\ChannelRequestEventArgs.cs" />
+    <Compile Include="Common\Extensions.NET.cs" />
     <Compile Include="Common\ProxyException.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -78,9 +79,6 @@
     <Compile Include="Common\DerData.cs" />
     <Compile Include="Common\ExceptionEventArgs.cs" />
     <Compile Include="Common\Extensions.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Common\Extensions.NET40.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Common\NetConfServerException.cs" />
@@ -131,6 +129,27 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="ConnectionInfo.cs" />
+    <Compile Include="ForwardedPortRemote.NET.cs" />
+    <Compile Include="HashInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Messages\Transport\KeyExchangeEcdhInitMessage.cs" />
+    <Compile Include="Messages\Transport\KeyExchangeEcdhReplyMessage.cs" />
+    <Compile Include="Security\Cryptography\Hashes\RIPEMD160Hash.cs" />
+    <Compile Include="Security\Cryptography\Hashes\SHA2HashBase.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Security\Cryptography\Hashes\SHA384Hash.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Security\Cryptography\Hashes\SHA512Hash.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Security\KeyExchangeEllipticCurveDiffieHellman.cs" />
+    <Compile Include="ShellStream.NET40.cs" />
+    <Compile Include="ExpectAsyncResult.cs" />
+    <Compile Include="Security\KeyExchangeDiffieHellmanGroupSha1.cs" />
+    <Compile Include="SftpClient.NET.cs" />
     <Compile Include="KeyboardInteractiveAuthenticationMethod.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -356,10 +375,19 @@
     </Compile>
     <Compile Include="SftpClient.NET40.cs" />
     <Compile Include="Sftp\Flags.cs" />
+    <Compile Include="Sftp\Requests\ExtendedRequests\FStatVfsRequest.cs" />
+    <Compile Include="Sftp\Requests\ExtendedRequests\HardLinkRequest.cs" />
+    <Compile Include="Sftp\Requests\SftpUnblockRequest.cs" />
+    <Compile Include="Sftp\Requests\SftpBlockRequest.cs" />
+    <Compile Include="Sftp\Requests\SftpExtendedRequest.cs" />
+    <Compile Include="Sftp\Requests\ExtendedRequests\PosixRenameRequest.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Sftp\Requests\SftpCloseRequest.cs" />
     <Compile Include="Sftp\Requests\SftpFSetStatRequest.cs" />
     <Compile Include="Sftp\Requests\SftpFStatRequest.cs" />
     <Compile Include="Sftp\Requests\SftpInitRequest.cs" />
+    <Compile Include="Sftp\Requests\SftpLinkRequest.cs" />
     <Compile Include="Sftp\Requests\SftpLStatRequest.cs" />
     <Compile Include="Sftp\Requests\SftpMkDirRequest.cs" />
     <Compile Include="Sftp\Requests\SftpOpenDirRequest.cs" />
@@ -376,6 +404,11 @@
     <Compile Include="Sftp\Requests\SftpStatRequest.cs" />
     <Compile Include="Sftp\Requests\SftpSymLinkRequest.cs" />
     <Compile Include="Sftp\Requests\SftpWriteRequest.cs" />
+    <Compile Include="Sftp\Requests\ExtendedRequests\StatVfsRequest.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Sftp\Responses\ExtendedReplies\ExtendedReplyInfo.cs" />
+    <Compile Include="Sftp\Responses\ExtendedReplies\StatVfsReplyInfo.cs" />
     <Compile Include="Sftp\Responses\SftpAttrsResponse.cs" />
     <Compile Include="Sftp\Responses\SftpDataResponse.cs" />
     <Compile Include="Sftp\Responses\SftpExtendedReplyResponse.cs" />
@@ -391,6 +424,9 @@
     <Compile Include="Sftp\SftpFile.cs" />
     <Compile Include="Sftp\SftpFileAttributes.cs" />
     <Compile Include="Sftp\SftpFileStream.cs" />
+    <Compile Include="Sftp\SftpFileSystemInformation.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Sftp\SftpListDirectoryAsyncResult.cs" />
     <Compile Include="Sftp\SftpMessage.cs" />
     <Compile Include="Sftp\SftpMessageTypes.cs">
@@ -399,6 +435,7 @@
     <Compile Include="Sftp\SftpSession.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Sftp\SftpSynchronizeDirectoriesAsyncResult.cs" />
     <Compile Include="Sftp\SftpUploadAsyncResult.cs" />
     <Compile Include="Sftp\StatusCodes.cs">
       <SubType>Code</SubType>
@@ -414,32 +451,6 @@
     <Compile Include="SubsystemSession.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Documentation\Content\About.aml" />
-    <None Include="Documentation\Content\Guide\Connection\Interactive.aml" />
-    <None Include="Documentation\Content\Guide\Connection\Overview.aml" />
-    <None Include="Documentation\Content\Guide\Connection\Password.aml" />
-    <None Include="Documentation\Content\Guide\Connection\PrivateKey.aml" />
-    <None Include="Documentation\Content\Guide\Errors.aml" />
-    <None Include="Documentation\Content\Guide\NetConfClient\Overview.aml" />
-    <None Include="Documentation\Content\Guide\Overview.aml" />
-    <None Include="Documentation\Content\Guide\ScpClient\Overview.aml" />
-    <None Include="Documentation\Content\Guide\SftpClient\Overview.aml" />
-    <None Include="Documentation\Content\Guide\SftpClient\SftpFile.aml" />
-    <None Include="Documentation\Content\Guide\SftpClient\SftpFileStream.aml" />
-    <None Include="Documentation\Content\Guide\SftpClient\SftpOperations.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Commands\Asynchronous.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Commands\Errors.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Commands\Execute.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Commands\Multitasking.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Commands\Overview.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Commands\StatusCode.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Commands\Timeout.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Overview.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\PortForwarding\Local.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\PortForwarding\Overview.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\PortForwarding\Remote.aml" />
-    <None Include="Documentation\Content\Guide\SshClient\Shell\Overview.aml" />
-    <None Include="Documentation\Content\Reference.aml" />
     <None Include="Documentation\Renci.SshNet.content" />
   </ItemGroup>
   <ItemGroup>

@@ -12,6 +12,7 @@ using Renci.SshNet.Security.Cryptography.Ciphers.Modes;
 using Renci.SshNet.Security.Cryptography.Ciphers;
 using System.Collections.ObjectModel;
 using System.Net;
+using Renci.SshNet.Compression;
 
 namespace Renci.SshNet
 {
@@ -20,6 +21,8 @@ namespace Renci.SshNet
     /// </summary>
     public class ConnectionInfo
     {
+        internal static int DEFAULT_PORT = 22;
+
         /// <summary>
         /// Gets supported key exchange algorithms for this connection.
         /// </summary>
@@ -33,7 +36,7 @@ namespace Renci.SshNet
         /// <summary>
         /// Gets supported hash algorithms for this connection.
         /// </summary>
-        public IDictionary<string, Func<byte[], HashAlgorithm>> HmacAlgorithms { get; private set; }
+        public IDictionary<string, HashInfo> HmacAlgorithms { get; private set; }
 
         /// <summary>
         /// Gets supported host key algorithms for this connection.
@@ -112,7 +115,18 @@ namespace Renci.SshNet
         /// <value>
         /// Connection timeout.
         /// </value>
+        /// <example>
+        ///   <code source="..\..\Renci.SshNet.Tests\Classes\SshClientTest.cs" region="Example SshClient Connect Timeout" language="C#" title="Specify connection timeout" />
+        /// </example>
         public TimeSpan Timeout { get; set; }
+
+        /// <summary>
+        /// Gets or sets the default encoding.
+        /// </summary>
+        /// <value>
+        /// The default encoding.
+        /// </value>
+        public Encoding Encoding { get; set; }
 
         /// <summary>
         /// Gets or sets number of retry attempts when session channel creation failed.
@@ -133,6 +147,9 @@ namespace Renci.SshNet
         /// <summary>
         /// Occurs when authentication banner is sent by the server.
         /// </summary>
+        /// <example>
+        ///     <code source="..\..\Renci.SshNet.Tests\Classes\PasswordConnectionInfoTest.cs" region="Example PasswordConnectionInfo AuthenticationBanner" language="C#" title="Display authentication banner" />
+        /// </example>
         public event EventHandler<AuthenticationBannerEventArgs> AuthenticationBanner;
 
         /// <summary>
@@ -192,7 +209,7 @@ namespace Renci.SshNet
         /// <param name="username">The username.</param>
         /// <param name="authenticationMethods">The authentication methods.</param>
         public ConnectionInfo(string host, string username, params AuthenticationMethod[] authenticationMethods)
-            : this(host, 22, username, ProxyTypes.None, null, 0, null, null, authenticationMethods)
+            : this(host, ConnectionInfo.DEFAULT_PORT, username, ProxyTypes.None, null, 0, null, null, authenticationMethods)
         {
         }
 
@@ -211,7 +228,7 @@ namespace Renci.SshNet
         //  TODO: DOCS Add exception documentation for this class.
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ConnectionInfo"/> class.
+        /// Initializes a new instance of the <see cref="ConnectionInfo" /> class.
         /// </summary>
         /// <param name="host">Connection host.</param>
         /// <param name="port">Connection port.</param>
@@ -222,11 +239,11 @@ namespace Renci.SshNet
         /// <param name="proxyUsername">The proxy username.</param>
         /// <param name="proxyPassword">The proxy password.</param>
         /// <param name="authenticationMethods">The authentication methods.</param>
-        /// <exception cref="ArgumentException"><paramref name="host"/> is invalid, or <paramref name="username"/> is null or contains whitespace characters.</exception>
-        ///   
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="port"/> is not within <see cref="IPEndPoint.MinPort"/> and <see cref="IPEndPoint.MaxPort"/>.</exception>
-        ///   
-        /// <exception cref="ArgumentException"><paramref name="username"/> is null or empty.</exception>
+        /// <exception cref="System.ArgumentException">host</exception>
+        /// <exception cref="System.ArgumentOutOfRangeException">proxyPort</exception>
+        /// <exception cref="ArgumentException"><paramref name="host" /> is invalid, or <paramref name="username" /> is null or contains whitespace characters.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="port" /> is not within <see cref="F:System.Net.IPEndPoint.MinPort" /> and <see cref="F:System.Net.IPEndPoint.MaxPort" />.</exception>
+        /// <exception cref="ArgumentException"><paramref name="host" /> is invalid, or <paramref name="username" /> is null or contains whitespace characters.</exception>
         public ConnectionInfo(string host, int port, string username, ProxyTypes proxyType, string proxyHost, int proxyPort, string proxyUsername, string proxyPassword, params AuthenticationMethod[] authenticationMethods)
         {
             if (!host.IsValidHost())
@@ -247,10 +264,14 @@ namespace Renci.SshNet
             if (username.IsNullOrWhiteSpace())
                 throw new ArgumentException("username");
 
+            if (authenticationMethods == null || authenticationMethods.Length < 1)
+                throw new ArgumentException("authenticationMethods");
+
             //  Set default connection values
             this.Timeout = TimeSpan.FromSeconds(30);
             this.RetryAttempts = 10;
             this.MaxSessions = 10;
+            this.Encoding = Encoding.UTF8;
 
             this.KeyExchangeAlgorithms = new Dictionary<string, Type>()
             {
@@ -258,6 +279,13 @@ namespace Renci.SshNet
                 {"diffie-hellman-group-exchange-sha1", typeof(KeyExchangeDiffieHellmanGroupExchangeSha1)},
                 {"diffie-hellman-group14-sha1", typeof(KeyExchangeDiffieHellmanGroup14Sha1)},
                 {"diffie-hellman-group1-sha1", typeof(KeyExchangeDiffieHellmanGroup1Sha1)},
+                //{"ecdh-sha2-nistp256", typeof(KeyExchangeEllipticCurveDiffieHellman)},
+                //{"ecdh-sha2-nistp256", typeof(...)},
+                //{"ecdh-sha2-nistp384", typeof(...)},
+                //{"ecdh-sha2-nistp521", typeof(...)},
+                //"gss-group1-sha1-toWM5Slw5Ew8Mqkay+al2g==" - WinSSHD
+                //"gss-gex-sha1-toWM5Slw5Ew8Mqkay+al2g==" - WinSSHD
+
             };
 
             this.Encryptions = new Dictionary<string, CipherInfo>()
@@ -268,16 +296,16 @@ namespace Renci.SshNet
                 {"aes192-cbc", new CipherInfo(192, (key, iv)=>{ return new AesCipher(key, new CbcCipherMode(iv), null); }) },
                 {"aes256-cbc", new CipherInfo(256, (key, iv)=>{ return new AesCipher(key, new CbcCipherMode(iv), null); }) },
                 {"blowfish-cbc", new CipherInfo(128, (key, iv)=>{ return new BlowfishCipher(key, new CbcCipherMode(iv), null); }) },
-                ////{"twofish-cbc", typeof(...)},
-                ////{"twofish192-cbc", typeof(...)},
-                ////{"twofish128-cbc", typeof(...)},
-                ////{"twofish256-cbc", typeof(...)},
+                {"twofish-cbc", new CipherInfo(256, (key, iv)=>{ return new TwofishCipher(key, new CbcCipherMode(iv), null); }) },
+                {"twofish192-cbc", new CipherInfo(192, (key, iv)=>{ return new TwofishCipher(key, new CbcCipherMode(iv), null); }) },
+                {"twofish128-cbc", new CipherInfo(128, (key, iv)=>{ return new TwofishCipher(key, new CbcCipherMode(iv), null); }) },
+                {"twofish256-cbc", new CipherInfo(256, (key, iv)=>{ return new TwofishCipher(key, new CbcCipherMode(iv), null); }) },
                 ////{"serpent256-cbc", typeof(CipherSerpent256CBC)},
                 ////{"serpent192-cbc", typeof(...)},
                 ////{"serpent128-cbc", typeof(...)},
-                ////{"arcfour128", typeof(...)},
-                ////{"arcfour256", typeof(...)},
-                ////{"arcfour", typeof(...)},
+                {"arcfour", new CipherInfo(128, (key, iv)=>{ return new Arc4Cipher(key, false); }) },
+                {"arcfour128", new CipherInfo(128, (key, iv)=>{ return new Arc4Cipher(key, true); }) },
+                {"arcfour256", new CipherInfo(256, (key, iv)=>{ return new Arc4Cipher(key, true); }) },
                 ////{"idea-cbc", typeof(...)},
                 {"cast128-cbc", new CipherInfo(128, (key, iv)=>{ return new CastCipher(key, new CbcCipherMode(iv), null); }) },
                 ////{"rijndael-cbc@lysator.liu.se", typeof(...)},                
@@ -285,15 +313,19 @@ namespace Renci.SshNet
                 {"aes192-ctr", new CipherInfo(192, (key, iv)=>{ return new AesCipher(key, new CtrCipherMode(iv), null); }) },
             };
 
-            this.HmacAlgorithms = new Dictionary<string, Func<byte[], HashAlgorithm>>()
+            this.HmacAlgorithms = new Dictionary<string, HashInfo>()
             {
-                {"hmac-md5", (key) => { return new HMac<MD5Hash>(key.Take(16).ToArray());}},
-                {"hmac-sha1", (key) => { return new HMac<SHA1Hash>(key.Take(20).ToArray());}},
+                {"hmac-md5", new HashInfo(16 * 8, (key)=>{ return new HMac<MD5Hash>(key); }) },
+                {"hmac-sha1", new HashInfo(20 * 8, (key)=>{ return new HMac<SHA1Hash>(key); }) },
+                {"hmac-sha2-256", new HashInfo(32 * 8, (key)=>{ return new HMac<SHA256Hash>(key); }) },
+                {"hmac-sha2-256-96", new HashInfo(32 * 8, (key)=>{ return new HMac<SHA256Hash>(key, 96); }) },
+                //{"hmac-sha2-512", new HashInfo(64 * 8, (key)=>{ return new HMac<SHA512Hash>(key); }) },
+                //{"hmac-sha2-512-96", new HashInfo(64 * 8, (key)=>{ return new HMac<SHA512Hash>(key, 96); }) },
                 //{"umac-64@openssh.com", typeof(HMacSha1)},
-                //{"hmac-ripemd160", typeof(HMacSha1)},
-                //{"hmac-ripemd160@openssh.com", typeof(HMacSha1)},
-                //{"hmac-md5-96", typeof(...)},
-                //{"hmac-sha1-96", typeof(...)},
+                {"hmac-ripemd160", new HashInfo(160, (key)=>{ return new HMac<RIPEMD160Hash>(key); }) },
+                {"hmac-ripemd160@openssh.com", new HashInfo(160, (key)=>{ return new HMac<RIPEMD160Hash>(key); }) },
+                {"hmac-md5-96", new HashInfo(16 * 8, (key)=>{ return new HMac<MD5Hash>(key, 96); }) },
+                {"hmac-sha1-96", new HashInfo(20 * 8, (key)=>{ return new HMac<SHA1Hash>(key, 96); }) },
                 //{"none", typeof(...)},
             };
 
@@ -301,6 +333,7 @@ namespace Renci.SshNet
             {
                 {"ssh-rsa", (data) => { return new KeyHostAlgorithm("ssh-rsa", new RsaKey(), data); }},
                 {"ssh-dss", (data) => { return new KeyHostAlgorithm("ssh-dss", new DsaKey(), data); }},
+                //{"ecdsa-sha2-nistp256 "}
                 //{"x509v3-sign-rsa", () => { ... },
                 //{"x509v3-sign-dss", () => { ... },
                 //{"spki-sign-rsa", () => { ... },
@@ -311,10 +344,11 @@ namespace Renci.SshNet
 
             this.CompressionAlgorithms = new Dictionary<string, Type>()
             {
-                {"none", null}, 
-                //{"zlib", typeof(Zlib)}, 
                 //{"zlib@openssh.com", typeof(ZlibOpenSsh)}, 
+                //{"zlib", typeof(Zlib)}, 
+                {"none", null}, 
             };
+
 
             this.ChannelRequests = new Dictionary<string, RequestInfo>()
             {
@@ -373,25 +407,30 @@ namespace Renci.SshNet
 
             var allowedAuthentications = noneAuthenticationMethod.AllowedAuthentications;
 
+            var triedAuthentications = new List<string>();
             while (authenticated != AuthenticationResult.Success)
             {
-                //  Find first authentication method
-                var method = this.AuthenticationMethods.Where((a) => allowedAuthentications.Contains(a.Name)).FirstOrDefault();
-
+                // Find first authentication method
+                var method = this.AuthenticationMethods.Where((a) => allowedAuthentications.Contains(a.Name) && !triedAuthentications.Contains(a.Name)).FirstOrDefault();
                 if (method == null)
                     throw new SshAuthenticationException("No suitable authentication method found to complete authentication.");
 
+                triedAuthentications.Add(method.Name);
+
                 authenticated = method.Authenticate(session);
 
-                if (authenticated == AuthenticationResult.PartialSuccess)
+                if (authenticated == AuthenticationResult.PartialSuccess || (method.AllowedAuthentications != null && method.AllowedAuthentications.Count() < allowedAuthentications.Count()))
                 {
-                    //  If further authentication is required then continue to try another method
+                    // If further authentication is required then continue to try another method
                     allowedAuthentications = method.AllowedAuthentications;
                     continue;
                 }
 
-                //  If authentication was successful or failure, exit
-                break;
+                // If authentication Fail, and all the authentication have been tried.
+                if (authenticated == AuthenticationResult.Failure && (triedAuthentications.Count() == allowedAuthentications.Count()))
+                {
+                    break;
+                }
             }
 
             session.UserAuthenticationBannerReceived -= Session_UserAuthenticationBannerReceived;

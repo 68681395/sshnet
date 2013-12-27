@@ -4,6 +4,7 @@ using Renci.SshNet.Common;
 using Renci.SshNet.Messages.Connection;
 using System.Globalization;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Renci.SshNet.Channels
 {
@@ -81,8 +82,6 @@ namespace Renci.SshNet.Channels
         {
             this._failedOpenAttempts++;
 
-            Debug.WriteLine(string.Format(CultureInfo.CurrentCulture, "Local channel: {0} attempts: {1}.", this.LocalChannelNumber, this._failedOpenAttempts));
-
             this.SessionSemaphore.Release();
 
             this._channelOpenResponseWaitHandle.Set();
@@ -102,6 +101,16 @@ namespace Renci.SshNet.Channels
             this.SessionSemaphore.Release();
         }
 
+        protected override void Close(bool wait)
+        {
+            base.Close(wait);
+
+            if (!wait)
+            {
+                this.SessionSemaphore.Release();
+            }
+        }
+
         /// <summary>
         /// Sends the pseudo terminal request.
         /// </summary>
@@ -114,7 +123,7 @@ namespace Renci.SshNet.Channels
         /// <returns>
         /// true if request was successful; otherwise false.
         /// </returns>
-        public bool SendPseudoTerminalRequest(string environmentVariable, uint columns, uint rows, uint width, uint height, params KeyValuePair<TerminalModes, uint>[] terminalModeValues)
+        public bool SendPseudoTerminalRequest(string environmentVariable, uint columns, uint rows, uint width, uint height, IDictionary<TerminalModes, uint> terminalModeValues)
         {
             this._channelRequestResponse.Reset();
 
@@ -185,7 +194,7 @@ namespace Renci.SshNet.Channels
         {
             this._channelRequestResponse.Reset();
 
-            this.SendMessage(new ChannelRequestMessage(this.RemoteChannelNumber, new ExecRequestInfo(command)));
+            this.SendMessage(new ChannelRequestMessage(this.RemoteChannelNumber, new ExecRequestInfo(command, this.ConnectionInfo.Encoding)));
 
             this.WaitHandle(this._channelRequestResponse);
 

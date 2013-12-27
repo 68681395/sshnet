@@ -15,7 +15,7 @@ namespace Renci.SshNet
 {
     //  TODO:   Please help with documentation here, as I don't know the details, specially for the methods not documented.
     /// <summary>
-    /// 
+    /// Contains operation for working with NetConf server.
     /// </summary>
     public partial class NetConfClient : BaseClient
     {
@@ -55,7 +55,7 @@ namespace Renci.SshNet
         /// <param name="password">Authentication password.</param>
         /// <exception cref="ArgumentNullException"><paramref name="password"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="host"/> is invalid, or <paramref name="username"/> is null or contains whitespace characters.</exception>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="port"/> is not within <see cref="System.Net.IPEndPoint.MinPort"/> and <see cref="System.Net.IPEndPoint.MaxPort"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="port"/> is not within <see cref="F:System.Net.IPEndPoint.MinPort"/> and <see cref="System.Net.IPEndPoint.MaxPort"/>.</exception>
         [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope", Justification = "Disposed in Dispose(bool) method.")]
         public NetConfClient(string host, int port, string username, string password)
             : this(new PasswordConnectionInfo(host, port, username, password))
@@ -72,7 +72,7 @@ namespace Renci.SshNet
         /// <exception cref="ArgumentNullException"><paramref name="password"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="host"/> is invalid, or <paramref name="username"/> is null or contains whitespace characters.</exception>
         public NetConfClient(string host, string username, string password)
-            : this(host, 22, username, password)
+            : this(host, ConnectionInfo.DEFAULT_PORT, username, password)
         {
         }
 
@@ -85,7 +85,7 @@ namespace Renci.SshNet
         /// <param name="keyFiles">Authentication private key file(s) .</param>
         /// <exception cref="ArgumentNullException"><paramref name="keyFiles"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="host"/> is invalid, -or- <paramref name="username"/> is null or contains whitespace characters.</exception>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="port"/> is not within <see cref="System.Net.IPEndPoint.MinPort"/> and <see cref="System.Net.IPEndPoint.MaxPort"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="port"/> is not within <see cref="F:System.Net.IPEndPoint.MinPort"/> and <see cref="System.Net.IPEndPoint.MaxPort"/>.</exception>
         [SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope", Justification = "Disposed in Dispose(bool) method.")]
         public NetConfClient(string host, int port, string username, params PrivateKeyFile[] keyFiles)
             : this(new PrivateKeyConnectionInfo(host, port, username, keyFiles))
@@ -102,7 +102,7 @@ namespace Renci.SshNet
         /// <exception cref="ArgumentNullException"><paramref name="keyFiles"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="host"/> is invalid, -or- <paramref name="username"/> is null or contains whitespace characters.</exception>
         public NetConfClient(string host, string username, params PrivateKeyFile[] keyFiles)
-            : this(host, 22, username, keyFiles)
+            : this(host, ConnectionInfo.DEFAULT_PORT, username, keyFiles)
         {
         }
 
@@ -116,7 +116,6 @@ namespace Renci.SshNet
         {
             get
             {
-                this.EnsureConnection();
                 return this._netConfSession.ServerCapabilities;
             }
         }
@@ -129,21 +128,34 @@ namespace Renci.SshNet
         {
             get
             {
-                this.EnsureConnection();
                 return this._netConfSession.ClientCapabilities;
             }
         }
 
+        /// <summary>
+        /// Gets or sets a value indicating whether [automatic message id handling].
+        /// </summary>
+        /// <value>
+        /// <c>true</c> if [automatic message id handling]; otherwise, <c>false</c>.
+        /// </value>
         public bool AutomaticMessageIdHandling { get; set; }
 
-        
+        /// <summary>
+        /// Sends the receive RPC.
+        /// </summary>
+        /// <param name="rpc">The RPC.</param>
+        /// <returns>Reply message to RPC request</returns>
         /// <exception cref="SshConnectionException">Client is not connected.</exception>
         public XmlDocument SendReceiveRpc(XmlDocument rpc)
         {
-            this.EnsureConnection();
             return this._netConfSession.SendReceiveRpc(rpc, this.AutomaticMessageIdHandling);
         }
 
+        /// <summary>
+        /// Sends the receive RPC.
+        /// </summary>
+        /// <param name="xml">The XML.</param>
+        /// <returns>Reply message to RPC request</returns>
         public XmlDocument SendReceiveRpc(string xml)
         {
             var rpc = new XmlDocument();
@@ -151,11 +163,13 @@ namespace Renci.SshNet
             return SendReceiveRpc(rpc);
         }
 
+        /// <summary>
+        /// Sends the close RPC.
+        /// </summary>
+        /// <returns>Reply message to closing RPC request</returns>
         /// <exception cref="SshConnectionException">Client is not connected.</exception>
         public XmlDocument SendCloseRpc()
         {
-            this.EnsureConnection();
-
             XmlDocument rpc = new XmlDocument();
 
             rpc.LoadXml("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rpc message-id=\"6666\" xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\"><close-session/></rpc>");

@@ -18,14 +18,17 @@ using System.Diagnostics.CodeAnalysis;
 namespace Renci.SshNet
 {
     /// <summary>
-    /// old private key information/
+    /// Represents private key information
     /// </summary>
+    /// <example>
+    ///     <code source="..\..\Renci.SshNet.Tests\Data\Key.RSA.txt" language="Text" title="Private RSA key example" />
+    /// </example>
     public class PrivateKeyFile : IDisposable
     {
 #if SILVERLIGHT
-		private static Regex _privateKeyRegex = new Regex(@"^-+ *BEGIN (?<keyName>\w+( \w+)*) PRIVATE KEY *-+\r?\n(Proc-Type: 4,ENCRYPTED\r?\nDEK-Info: (?<cipherName>[A-Z0-9-]+),(?<salt>[A-F0-9]+)\r?\n\r?\n)?(?<data>([a-zA-Z0-9/+=]{1,72}\r?\n)+)-+ *END \k<keyName> PRIVATE KEY *-+", RegexOptions.Multiline);
+		private static Regex _privateKeyRegex = new Regex(@"^-+ *BEGIN (?<keyName>\w+( \w+)*) PRIVATE KEY *-+\r?\n(Proc-Type: 4,ENCRYPTED\r?\nDEK-Info: (?<cipherName>[A-Z0-9-]+),(?<salt>[A-F0-9]+)\r?\n\r?\n)?(?<data>([a-zA-Z0-9/+=]{1,80}\r?\n)+)-+ *END \k<keyName> PRIVATE KEY *-+", RegexOptions.Multiline);
 #else
-        private static Regex _privateKeyRegex = new Regex(@"^-+ *BEGIN (?<keyName>\w+( \w+)*) PRIVATE KEY *-+\r?\n(Proc-Type: 4,ENCRYPTED\r?\nDEK-Info: (?<cipherName>[A-Z0-9-]+),(?<salt>[A-F0-9]+)\r?\n\r?\n)?(?<data>([a-zA-Z0-9/+=]{1,72}\r?\n)+)-+ *END \k<keyName> PRIVATE KEY *-+", RegexOptions.Compiled | RegexOptions.Multiline);
+        private static Regex _privateKeyRegex = new Regex(@"^-+ *BEGIN (?<keyName>\w+( \w+)*) PRIVATE KEY *-+\r?\n(Proc-Type: 4,ENCRYPTED\r?\nDEK-Info: (?<cipherName>[A-Z0-9-]+),(?<salt>[A-F0-9]+)\r?\n\r?\n)?(?<data>([a-zA-Z0-9/+=]{1,80}\r?\n)+)-+ *END \k<keyName> PRIVATE KEY *-+", RegexOptions.Compiled | RegexOptions.Multiline);
 #endif
 
         private Key _key;
@@ -55,7 +58,7 @@ namespace Renci.SshNet
             if (string.IsNullOrEmpty(fileName))
                 throw new ArgumentNullException("fileName");
 
-            using (var keyFile = File.OpenRead(fileName))
+            using (var keyFile = File.Open(fileName, FileMode.Open, FileAccess.Read))
             {
                 this.Open(keyFile, null);
             }
@@ -73,7 +76,7 @@ namespace Renci.SshNet
             if (string.IsNullOrEmpty(fileName))
                 throw new ArgumentNullException("fileName");
 
-            using (var keyFile = File.OpenRead(fileName))
+            using (var keyFile = File.Open(fileName, FileMode.Open, FileAccess.Read))
             {
                 this.Open(keyFile, passPhrase);
             }
@@ -121,7 +124,7 @@ namespace Renci.SshNet
 
             var binaryData = System.Convert.FromBase64String(data);
 
-            byte[] decryptedData;
+            byte[] decryptedData = null;
 
             if (!string.IsNullOrEmpty(cipherName) && !string.IsNullOrEmpty(salt))
             {
@@ -144,16 +147,15 @@ namespace Renci.SshNet
                     case "DES-CBC":
                         cipher = new CipherInfo(64, (key, iv) => { return new DesCipher(key, new CbcCipherMode(iv), new PKCS7Padding()); });
                         break;
-                    //  TODO:   Implement more private key ciphers
-                    //case "AES-128-CBC":
-                    //    cipher = new CipherInfo(128, (key, iv) => { return new AesCipher(key, new CbcCipherMode(iv), new PKCS5Padding()); });
-                    //    break;
-                    //case "AES-192-CBC":
-                    //    cipher = new CipherInfo(192, (key, iv) => { return new AesCipher(key, new CbcCipherMode(iv), new PKCS5Padding()); });
-                    //    break;
-                    //case "AES-256-CBC":
-                    //    cipher = new CipherInfo(256, (key, iv) => { return new AesCipher(key, new CbcCipherMode(iv), new PKCS5Padding()); });
-                    //    break;
+                    case "AES-128-CBC":
+                        cipher = new CipherInfo(128, (key, iv) => { return new AesCipher(key, new CbcCipherMode(iv), new PKCS7Padding()); });
+                        break;
+                    case "AES-192-CBC":
+                        cipher = new CipherInfo(192, (key, iv) => { return new AesCipher(key, new CbcCipherMode(iv), new PKCS7Padding()); });
+                        break;
+                    case "AES-256-CBC":
+                        cipher = new CipherInfo(256, (key, iv) => { return new AesCipher(key, new CbcCipherMode(iv), new PKCS7Padding()); });
+                        break;
                     default:
                         throw new SshException(string.Format(CultureInfo.CurrentCulture, "Private key cipher \"{0}\" is not supported.", cipherName));
                 }
@@ -204,13 +206,15 @@ namespace Renci.SshNet
                         throw new SshException(string.Format("Cipher method '{0}' is not supported.", cipherName));
                     }
 
+                    //  TODO:   Create two specific data types to avoid using SshDataReader class
+
                     reader = new SshDataReader(keyData);
 
                     var decryptedLength = reader.ReadUInt32();
 
                     if (decryptedLength + 4 != blobSize)
                         throw new SshException("Invalid passphrase.");
-
+                    
                     if (keyType == "if-modn{sign{rsa-pkcs1-sha1},encrypt{rsa-pkcs1v2-oaep}}")
                     {
                         var exponent = reader.ReadBigIntWithBits();//e
@@ -279,8 +283,9 @@ namespace Renci.SshNet
         /// <param name="cipherData">Encrypted data.</param>
         /// <param name="passPhrase">Decryption pass phrase.</param>
         /// <param name="binarySalt">Decryption binary salt.</param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentNullException"><paramref name="cipherInfo"/>, <paramref name="cipherData"/>, <paramref name="passPhrase"/> or <paramref name="binarySalt"/> is null.</exception>
+        /// <returns>Decrypted byte array.</returns>
+        /// <exception cref="System.ArgumentNullException">cipherInfo</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="cipherInfo" />, <paramref name="cipherData" />, <paramref name="passPhrase" /> or <paramref name="binarySalt" /> is null.</exception>
         private static byte[] DecryptKey(CipherInfo cipherInfo, byte[] cipherData, string passPhrase, byte[] binarySalt)
         {
             if (cipherInfo == null)
@@ -298,7 +303,8 @@ namespace Renci.SshNet
             {
                 var passwordBytes = Encoding.UTF8.GetBytes(passPhrase);
 
-                var initVector = passwordBytes.Concat(binarySalt);
+                //  Use 8 bytes binary salkt
+                var initVector = passwordBytes.Concat(binarySalt.Take(8));
 
                 var hash = md5.ComputeHash(initVector.ToArray()).AsEnumerable();
 
@@ -380,17 +386,17 @@ namespace Renci.SshNet
                 this.LoadBytes(data);
             }
 
-            public UInt32 ReadUInt32()
+            public new UInt32 ReadUInt32()
             {
                 return base.ReadUInt32();
             }
 
-            public string ReadString()
+            public new string ReadString()
             {
                 return base.ReadString();
             }
 
-            public byte[] ReadBytes(int length)
+            public new byte[] ReadBytes(int length)
             {
                 return base.ReadBytes(length);
             }

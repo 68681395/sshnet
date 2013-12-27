@@ -59,7 +59,7 @@ namespace Renci.SshNet.Common
         /// <summary>
         /// Gets data bytes array
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Byte array representation of data structure.</returns>
         public virtual byte[] GetBytes()
         {
             this._data = new List<byte>();
@@ -236,13 +236,22 @@ namespace Renci.SshNet.Common
         /// <returns>string read</returns>
         protected string ReadString()
         {
+            return this.ReadString(SshData._utf8);
+        }
+
+        /// <summary>
+        /// Reads next string data type from internal buffer.
+        /// </summary>
+        /// <returns>string read</returns>
+        protected string ReadString(Encoding encoding)
+        {
             var length = this.ReadUInt32();
 
             if (length > (uint)int.MaxValue)
             {
                 throw new NotSupportedException(string.Format(CultureInfo.CurrentCulture, "Strings longer than {0} is not supported.", int.MaxValue));
             }
-            return _utf8.GetString(this.ReadBytes((int)length), 0, (int)length);
+            return encoding.GetString(this.ReadBytes((int)length), 0, (int)length);
         }
 
 
@@ -278,7 +287,7 @@ namespace Renci.SshNet.Common
         /// <summary>
         /// Reads next name-list data type from internal buffer.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>String array or read data..</returns>
         protected string[] ReadNamesList()
         {
             var namesList = this.ReadString();
@@ -288,7 +297,7 @@ namespace Renci.SshNet.Common
         /// <summary>
         /// Reads next extension-pair data type from internal buffer.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>Extensions pair dictionary.</returns>
         protected IDictionary<string, string> ReadExtensionPair()
         {
             Dictionary<string, string> result = new Dictionary<string, string>();
@@ -372,20 +381,6 @@ namespace Renci.SshNet.Common
             this.Write(data.GetBytes());
         }
 
-        /// <summary>
-        /// Writes string data into internal buffer using default encoding.
-        /// </summary>
-        /// <param name="data">string data to write.</param>
-        /// <exception cref="ArgumentNullException"><paramref name="data"/> is null.</exception>
-        protected void Write(string data)
-        {
-            if (data == null)
-                throw new ArgumentNullException("data");
-
-            var bytes = _utf8.GetBytes(data);
-            this.Write((uint)bytes.Length);
-            this.Write(bytes);
-        }
 
         /// <summary>
         /// Writes string data into internal buffer as ASCII.
@@ -393,10 +388,25 @@ namespace Renci.SshNet.Common
         /// <param name="data">string data to write.</param>
         protected void WriteAscii(string data)
         {
+            this.Write(data, SshData._ascii);
+        }
+
+        /// <summary>
+        /// Writes string data into internal buffer using default encoding.
+        /// </summary>
+        /// <param name="data">string data to write.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="data"/> is null.</exception>
+        protected void Write(string data)
+        {
+            this.Write(data, SshData._utf8);
+        }
+
+        protected void Write(string data, Encoding encoding)
+        {
             if (data == null)
                 throw new ArgumentNullException("data");
 
-            var bytes = _ascii.GetBytes(data);
+            var bytes = encoding.GetBytes(data);
             this.Write((uint)bytes.Length);
             this.Write(bytes);
         }
@@ -434,6 +444,7 @@ namespace Renci.SshNet.Common
         {
             this.WriteAscii(string.Join(",", data));
         }
+
 
         /// <summary>
         /// Writes extension-pair data into internal buffer.

@@ -11,13 +11,36 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Renci.SshNet.WindowsPhone</RootNamespace>
     <AssemblyName>Renci.SshNet.WindowsPhone</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <SilverlightVersion>$(TargetFrameworkVersion)</SilverlightVersion>
-    <TargetFrameworkProfile>WindowsPhone71</TargetFrameworkProfile>
-    <TargetFrameworkIdentifier>Silverlight</TargetFrameworkIdentifier>
+    <TargetFrameworkVersion>v8.0</TargetFrameworkVersion>
+    <SilverlightVersion>
+    </SilverlightVersion>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
+    <TargetFrameworkIdentifier>WindowsPhone</TargetFrameworkIdentifier>
     <SilverlightApplication>false</SilverlightApplication>
     <ValidateXaml>true</ValidateXaml>
     <ThrowErrorsInValidation>true</ThrowErrorsInValidation>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <OldToolsVersion>4.0</OldToolsVersion>
+    <MinimumVisualStudioVersion>11.0</MinimumVisualStudioVersion>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -29,6 +52,7 @@
     <NoConfig>true</NoConfig>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>Bin\Debug\Renci.SshNet.WindowsPhone.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -39,15 +63,34 @@
     <NoConfig>true</NoConfig>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>Bin\Release\Renci.SshNet.WindowsPhone.XML</DocumentationFile>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="System.Windows" />
-    <Reference Include="system" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Net" />
-    <Reference Include="mscorlib.extensions" />
-  </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <PlatformTarget />
+    <OutputPath>Bin\x86\Debug</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <PlatformTarget />
+    <OutputPath>Bin\x86\Release</OutputPath>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|ARM'">
+    <PlatformTarget />
+    <OutputPath>Bin\ARM\Debug</OutputPath>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|ARM'">
+    <PlatformTarget />
+    <OutputPath>Bin\ARM\Release</OutputPath>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\Renci.SshNet\AuthenticationMethod.cs">
       <Link>AuthenticationMethod.cs</Link>
@@ -205,6 +248,9 @@
     <Compile Include="..\Renci.SshNet\ExpectAction.cs">
       <Link>ExpectAction.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\ExpectAsyncResult.cs">
+      <Link>ExpectAsyncResult.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\ForwardedPort.cs">
       <Link>ForwardedPort.cs</Link>
     </Compile>
@@ -216,6 +262,9 @@
     </Compile>
     <Compile Include="..\Renci.SshNet\ForwardedPortRemote.cs">
       <Link>ForwardedPortRemote.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\HashInfo.cs">
+      <Link>HashInfo.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\KeyboardInteractiveAuthenticationMethod.cs">
       <Link>KeyboardInteractiveAuthenticationMethod.cs</Link>
@@ -421,6 +470,12 @@
     <Compile Include="..\Renci.SshNet\Messages\Transport\KeyExchangeDhReplyMessage.cs">
       <Link>Messages\Transport\KeyExchangeDhReplyMessage.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Transport\KeyExchangeEcdhInitMessage.cs">
+      <Link>Messages\Transport\KeyExchangeEcdhInitMessage.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Messages\Transport\KeyExchangeEcdhReplyMessage.cs">
+      <Link>Messages\Transport\KeyExchangeEcdhReplyMessage.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Messages\Transport\KeyExchangeInitMessage.cs">
       <Link>Messages\Transport\KeyExchangeInitMessage.cs</Link>
     </Compile>
@@ -544,11 +599,23 @@
     <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\MD5Hash.cs">
       <Link>Security\Cryptography\Hashes\MD5Hash.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\RIPEMD160Hash.cs">
+      <Link>Security\Cryptography\Hashes\RIPEMD160Hash.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA1Hash.cs">
       <Link>Security\Cryptography\Hashes\SHA1Hash.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA256Hash.cs">
       <Link>Security\Cryptography\Hashes\SHA256Hash.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA2HashBase.cs">
+      <Link>Security\Cryptography\Hashes\SHA2HashBase.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA384Hash.cs">
+      <Link>Security\Cryptography\Hashes\SHA384Hash.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Security\Cryptography\Hashes\SHA512Hash.cs">
+      <Link>Security\Cryptography\Hashes\SHA512Hash.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Security\Cryptography\HMac.cs">
       <Link>Security\Cryptography\HMac.cs</Link>
@@ -589,6 +656,12 @@
     <Compile Include="..\Renci.SshNet\Security\KeyExchangeDiffieHellmanGroupExchangeSha256.cs">
       <Link>Security\KeyExchangeDiffieHellmanGroupExchangeSha256.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Security\KeyExchangeDiffieHellmanGroupSha1.cs">
+      <Link>Security\KeyExchangeDiffieHellmanGroupSha1.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Security\KeyExchangeEllipticCurveDiffieHellman.cs">
+      <Link>Security\KeyExchangeEllipticCurveDiffieHellman.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Security\KeyHostAlgorithm.cs">
       <Link>Security\KeyHostAlgorithm.cs</Link>
     </Compile>
@@ -607,8 +680,26 @@
     <Compile Include="..\Renci.SshNet\Sftp\Flags.cs">
       <Link>Sftp\Flags.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\ExtendedRequests\FStatVfsRequest.cs">
+      <Link>Sftp\Requests\ExtendedRequests\FStatVfsRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\ExtendedRequests\HardLinkRequest.cs">
+      <Link>Sftp\Requests\ExtendedRequests\HardLinkRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\ExtendedRequests\PosixRenameRequest.cs">
+      <Link>Sftp\Requests\ExtendedRequests\PosixRenameRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\ExtendedRequests\StatVfsRequest.cs">
+      <Link>Sftp\Requests\ExtendedRequests\StatVfsRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpBlockRequest.cs">
+      <Link>Sftp\Requests\SftpBlockRequest.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpCloseRequest.cs">
       <Link>Sftp\Requests\SftpCloseRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpExtendedRequest.cs">
+      <Link>Sftp\Requests\SftpExtendedRequest.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpFSetStatRequest.cs">
       <Link>Sftp\Requests\SftpFSetStatRequest.cs</Link>
@@ -618,6 +709,9 @@
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpInitRequest.cs">
       <Link>Sftp\Requests\SftpInitRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpLinkRequest.cs">
+      <Link>Sftp\Requests\SftpLinkRequest.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpLStatRequest.cs">
       <Link>Sftp\Requests\SftpLStatRequest.cs</Link>
@@ -664,8 +758,17 @@
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpSymLinkRequest.cs">
       <Link>Sftp\Requests\SftpSymLinkRequest.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpUnblockRequest.cs">
+      <Link>Sftp\Requests\SftpUnblockRequest.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Requests\SftpWriteRequest.cs">
       <Link>Sftp\Requests\SftpWriteRequest.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Responses\ExtendedReplies\ExtendedReplyInfo.cs">
+      <Link>Sftp\Responses\ExtendedReplies\ExtendedReplyInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\Responses\ExtendedReplies\StatVfsReplyInfo.cs">
+      <Link>Sftp\Responses\ExtendedReplies\StatVfsReplyInfo.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\Responses\SftpAttrsResponse.cs">
       <Link>Sftp\Responses\SftpAttrsResponse.cs</Link>
@@ -706,6 +809,9 @@
     <Compile Include="..\Renci.SshNet\Sftp\SftpFileStream.cs">
       <Link>Sftp\SftpFileStream.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet\Sftp\SftpFileSystemInformation.cs">
+      <Link>Sftp\SftpFileSystemInformation.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\Sftp\SftpListDirectoryAsyncResult.cs">
       <Link>Sftp\SftpListDirectoryAsyncResult.cs</Link>
     </Compile>
@@ -727,8 +833,14 @@
     <Compile Include="..\Renci.SshNet\Shell.cs">
       <Link>Shell.cs</Link>
     </Compile>
+    <Compile Include="..\Renci.SshNet.Silverlight\Shell.SilverlightShared.cs">
+      <Link>Shell.SilverlightShared.cs</Link>
+    </Compile>
     <Compile Include="..\Renci.SshNet\ShellStream.cs">
       <Link>ShellStream.cs</Link>
+    </Compile>
+    <Compile Include="..\Renci.SshNet.Silverlight\ShellStream.SilverlightShared.cs">
+      <Link>ShellStream.SilverlightShared.cs</Link>
     </Compile>
     <Compile Include="..\Renci.SshNet\SshClient.cs">
       <Link>SshClient.cs</Link>
@@ -748,11 +860,23 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Session.WP.cs" />
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.$(TargetFrameworkProfile).Overrides.targets" />
-  <Import Project="$(MSBuildExtensionsPath)\Microsoft\Silverlight for Phone\$(TargetFrameworkVersion)\Microsoft.Silverlight.CSharp.targets" />
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\$(TargetFrameworkIdentifier)\$(TargetFrameworkVersion)\Microsoft.$(TargetFrameworkIdentifier).$(TargetFrameworkVersion).Overrides.targets" />
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\$(TargetFrameworkIdentifier)\$(TargetFrameworkVersion)\Microsoft.$(TargetFrameworkIdentifier).CSharp.targets" />
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties ProjectLinkReference="2f5f8c90-0bd1-424f-997c-7bc6280919d1" ProjectLinkerExcludeFilter="\\?desktop(\\.*)?$;\\?silverlight(\\.*)?$;\.desktop;\.silverlight;\.xaml;^service references(\\.*)?$;\.clientconfig;^web references(\\.*)?$" />
+      <UserProperties ProjectLinkerExcludeFilter="\\?desktop(\\.*)?$;\\?silverlight(\\.*)?$;\.desktop;\.silverlight;\.xaml;^service references(\\.*)?$;\.clientconfig;^web references(\\.*)?$" ProjectLinkReference="2f5f8c90-0bd1-424f-997c-7bc6280919d1" />
     </VisualStudio>
   </ProjectExtensions>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -17,21 +17,24 @@ namespace Renci.SshNet
     /// </summary>
     public partial class ScpClient
     {
+        private static Regex _rootPath = new Regex(@"^(/|[A-Z][:])", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
         /// <summary>
         /// Uploads the specified file to the remote host.
         /// </summary>
-        /// <param name="fileInfo">Local file to upload.</param>
-        /// <param name="filename">Remote host file name.</param>
-        /// <exception cref="ArgumentNullException"><paramref name="fileInfo"/> or <paramref name="filename"/> is null.</exception>
-        public void Upload(FileInfo fileInfo, string filename)
+        /// <param name="fileInfo">The file system info.</param>
+        /// <param name="path">The path.</param>
+        /// <exception cref="System.ArgumentNullException">fileSystemInfo</exception>
+        /// <exception cref="System.ArgumentException">path</exception>
+        /// <exception cref="System.NotSupportedException"></exception>
+        /// <exception cref="ArgumentNullException"><paramref name="fileInfo" /> or <paramref name="filename" /> is null.</exception>
+        public void Upload(FileInfo fileInfo, string path)
         {
             if (fileInfo == null)
-                throw new ArgumentNullException("fileInfo");
+                throw new ArgumentNullException("fileSystemInfo");
 
-            if (filename == null)
-                throw new ArgumentNullException("filename"); //  TODO:   Should add IsNullOrWhitespace for this filename parameter?
-
-            //  UNDONE:   EnsureConnection?
+            if (string.IsNullOrEmpty(path))
+                throw new ArgumentException("path");
 
             using (var input = new PipeStream())
             using (var channel = this.Session.CreateChannel<ChannelSession>())
@@ -45,11 +48,10 @@ namespace Renci.SshNet
                 channel.Open();
 
                 //  Send channel command request
-                channel.SendExecRequest(string.Format("scp -qt \"{0}\"", filename));
-
+                channel.SendExecRequest(string.Format("scp -t \"{0}\"", path));
                 this.CheckReturnCode(input);
 
-                this.InternalUpload(channel, input, fileInfo, filename);
+                this.InternalUpload(channel, input, fileInfo, fileInfo.Name);
 
                 channel.Close();
             }
@@ -58,18 +60,17 @@ namespace Renci.SshNet
         /// <summary>
         /// Uploads the specified directory to the remote host.
         /// </summary>
-        /// <param name="directoryInfo">Local directory to upload.</param>
-        /// <param name="filename">Remote host directory name.</param>
-        /// <exception cref="ArgumentNullException"><paramref name="directoryInfo"/> or <paramref name="filename"/> is null.</exception>
-        public void Upload(DirectoryInfo directoryInfo, string filename)
+        /// <param name="directoryInfo">The directory info.</param>
+        /// <param name="path">The path.</param>
+        /// <exception cref="System.ArgumentNullException">fileSystemInfo</exception>
+        /// <exception cref="System.ArgumentException">path</exception>
+        public void Upload(DirectoryInfo directoryInfo, string path)
         {
             if (directoryInfo == null)
-                throw new ArgumentNullException("directoryInfo");
+                throw new ArgumentNullException("fileSystemInfo");
 
-            if (filename == null)
-                throw new ArgumentNullException("filename"); //  TODO:   Should add IsNullOrWhitespace for this filename parameter?
-
-            //  UNDONE:   EnsureConnection?
+            if (string.IsNullOrEmpty(path))
+                throw new ArgumentException("path");
 
             using (var input = new PipeStream())
             using (var channel = this.Session.CreateChannel<ChannelSession>())
@@ -83,10 +84,17 @@ namespace Renci.SshNet
                 channel.Open();
 
                 //  Send channel command request
-                channel.SendExecRequest(string.Format("scp -qrt \"{0}\"", filename));
+                channel.SendExecRequest(string.Format("scp -rt \"{0}\"", path));
                 this.CheckReturnCode(input);
 
-                this.InternalUpload(channel, input, directoryInfo, filename);
+                this.InternalSetTimestamp(channel, input, directoryInfo.LastWriteTimeUtc, directoryInfo.LastAccessTimeUtc);
+                this.SendData(channel, string.Format("D0755 0 {0}\n", Path.GetFileName(path)));
+                this.CheckReturnCode(input);
+
+                this.InternalUpload(channel, input, directoryInfo as DirectoryInfo, directoryInfo.Name);
+
+                this.SendData(channel, "E\n");
+                this.CheckReturnCode(input);
 
                 channel.Close();
             }
@@ -103,10 +111,8 @@ namespace Renci.SshNet
             if (fileInfo == null)
                 throw new ArgumentNullException("fileInfo");
 
-            if (filename == null)
-                throw new ArgumentNullException("filename"); //  TODO:   Should add IsNullOrWhitespace for this filename parameter?
-
-            //  UNDONE:   EnsureConnection?
+            if (string.IsNullOrEmpty(filename))
+                throw new ArgumentException("filename");
 
             using (var input = new PipeStream())
             using (var channel = this.Session.CreateChannel<ChannelSession>())
@@ -120,7 +126,7 @@ namespace Renci.SshNet
                 channel.Open();
 
                 //  Send channel command request
-                channel.SendExecRequest(string.Format("scp -qpf \"{0}\"", filename));
+                channel.SendExecRequest(string.Format("scp -pf \"{0}\"", filename));
                 this.SendConfirmation(channel); //  Send reply
 
                 this.InternalDownload(channel, input, fileInfo);
@@ -140,10 +146,8 @@ namespace Renci.SshNet
             if (directoryInfo == null)
                 throw new ArgumentNullException("directoryInfo");
 
-            if (directoryName == null)
-                throw new ArgumentNullException("directoryName"); //  TODO:   Should add IsNullOrWhitespace for this filename parameter?
-
-            //  UNDONE:   EnsureConnection?
+            if (string.IsNullOrEmpty(directoryName))
+                throw new ArgumentException("directoryName");
 
             using (var input = new PipeStream())
             using (var channel = this.Session.CreateChannel<ChannelSession>())
@@ -157,7 +161,7 @@ namespace Renci.SshNet
                 channel.Open();
 
                 //  Send channel command request
-                channel.SendExecRequest(string.Format("scp -qprf \"{0}\"", directoryName));
+                channel.SendExecRequest(string.Format("scp -prf \"{0}\"", directoryName));
                 this.SendConfirmation(channel); //  Send reply
 
                 this.InternalDownload(channel, input, directoryInfo);
@@ -169,20 +173,14 @@ namespace Renci.SshNet
         private void InternalUpload(ChannelSession channel, Stream input, FileInfo fileInfo, string filename)
         {
             this.InternalSetTimestamp(channel, input, fileInfo.LastWriteTimeUtc, fileInfo.LastAccessTimeUtc);
-
             using (var source = fileInfo.OpenRead())
             {
-                this.InternalFileUpload(channel, input, source, filename);
+                this.InternalUpload(channel, input, source, filename);
             }
         }
 
-        private void InternalUpload(ChannelSession channel, PipeStream input, DirectoryInfo directoryInfo, string directoryName)
+        private void InternalUpload(ChannelSession channel, Stream input, DirectoryInfo directoryInfo, string directoryName)
         {
-            this.InternalSetTimestamp(channel, input, directoryInfo.LastWriteTimeUtc, directoryInfo.LastAccessTimeUtc);
-
-            this.SendData(channel, string.Format("D0755 0 {0}\n", directoryName));
-            this.CheckReturnCode(input);
-
             //  Upload files
             var files = directoryInfo.GetFiles();
             foreach (var file in files)
@@ -194,11 +192,15 @@ namespace Renci.SshNet
             var directories = directoryInfo.GetDirectories();
             foreach (var directory in directories)
             {
-                this.InternalUpload(channel, input, directory, directory.Name);
-            }
+                this.InternalSetTimestamp(channel, input, directoryInfo.LastWriteTimeUtc, directoryInfo.LastAccessTimeUtc);
+                this.SendData(channel, string.Format("D0755 0 {0}\n", directory.Name));
+                this.CheckReturnCode(input);
 
-            this.SendData(channel, "E\n");
-            this.CheckReturnCode(input);
+                this.InternalUpload(channel, input, directory, directory.Name);
+
+                this.SendData(channel, "E\n");
+                this.CheckReturnCode(input);
+            }
         }
 
         private void InternalDownload(ChannelSession channel, Stream input, FileSystemInfo fileSystemInfo)
@@ -222,11 +224,9 @@ namespace Renci.SshNet
 
                     currentDirectoryFullName = new DirectoryInfo(currentDirectoryFullName).Parent.FullName;
 
-                    //if (currentDirectoryFullName == startDirectoryFullName)
                     if (directoryCounter == 0)
                         break;
-                    else
-                        continue;
+                    continue;
                 }
 
                 var match = _directoryInfoRe.Match(message);
@@ -274,15 +274,14 @@ namespace Renci.SshNet
 
                     using (var output = fileInfo.OpenWrite())
                     {
-                        this.InternalFileDownload(channel, input, output, fileName, length);
+                        this.InternalDownload(channel, input, output, fileName, length);
                     }
 
                     fileInfo.LastAccessTime = accessedTime;
                     fileInfo.LastWriteTime = modifiedTime;
 
-                    if (fileSystemInfo is FileInfo)
+                    if (directoryCounter == 0)
                         break;
-
                     continue;
                 }
 

@@ -9,6 +9,9 @@ namespace Renci.SshNet
     /// <summary>
     /// Provides connection information when private key authentication method is used
     /// </summary>
+    /// <example>
+    ///   <code source="..\..\Renci.SshNet.Tests\Classes\PrivateKeyConnectionInfoTest.cs" region="Example PrivateKeyConnectionInfo PrivateKeyFile" language="C#" title="Connect using private key" />
+    ///   </example>
     public class PrivateKeyConnectionInfo : ConnectionInfo, IDisposable
     {
         /// <summary>
@@ -22,8 +25,12 @@ namespace Renci.SshNet
         /// <param name="host">Connection host.</param>
         /// <param name="username">Connection username.</param>
         /// <param name="keyFiles">Connection key files.</param>
+        /// <example>
+        ///     <code source="..\..\Renci.SshNet.Tests\Classes\PrivateKeyConnectionInfoTest.cs" region="Example PrivateKeyConnectionInfo PrivateKeyFile" language="C#" title="Connect using private key" />
+        ///     <code source="..\..\Renci.SshNet.Tests\Classes\PrivateKeyConnectionInfoTest.cs" region="Example PrivateKeyConnectionInfo PrivateKeyFile Multiple" language="C#" title="Connect using multiple private key" />
+        /// </example>
         public PrivateKeyConnectionInfo(string host, string username, params PrivateKeyFile[] keyFiles)
-            : this(host, 22, username, ProxyTypes.None, string.Empty, 0, string.Empty, string.Empty, keyFiles)
+            : this(host, ConnectionInfo.DEFAULT_PORT, username, ProxyTypes.None, string.Empty, 0, string.Empty, string.Empty, keyFiles)
         {
 
         }
@@ -81,7 +88,7 @@ namespace Renci.SshNet
         /// <param name="proxyPort">The proxy port.</param>
         /// <param name="keyFiles">The key files.</param>
         public PrivateKeyConnectionInfo(string host, string username, ProxyTypes proxyType, string proxyHost, int proxyPort, params PrivateKeyFile[] keyFiles)
-            : this(host, 22, username, proxyType, proxyHost, proxyPort, string.Empty, string.Empty, keyFiles)
+            : this(host, ConnectionInfo.DEFAULT_PORT, username, proxyType, proxyHost, proxyPort, string.Empty, string.Empty, keyFiles)
         {
         }
 
@@ -96,7 +103,7 @@ namespace Renci.SshNet
         /// <param name="proxyUsername">The proxy username.</param>
         /// <param name="keyFiles">The key files.</param>
         public PrivateKeyConnectionInfo(string host, string username, ProxyTypes proxyType, string proxyHost, int proxyPort, string proxyUsername, params PrivateKeyFile[] keyFiles)
-            : this(host, 22, username, proxyType, proxyHost, proxyPort, proxyUsername, string.Empty, keyFiles)
+            : this(host, ConnectionInfo.DEFAULT_PORT, username, proxyType, proxyHost, proxyPort, proxyUsername, string.Empty, keyFiles)
         {
         }
 
@@ -112,7 +119,7 @@ namespace Renci.SshNet
         /// <param name="proxyPassword">The proxy password.</param>
         /// <param name="keyFiles">The key files.</param>
         public PrivateKeyConnectionInfo(string host, string username, ProxyTypes proxyType, string proxyHost, int proxyPort, string proxyUsername, string proxyPassword, params PrivateKeyFile[] keyFiles)
-            : this(host, 22, username, proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword, keyFiles)
+            : this(host, ConnectionInfo.DEFAULT_PORT, username, proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword, keyFiles)
         {
         }
 
